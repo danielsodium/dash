@@ -5,6 +5,8 @@
 #include <string.h>
 #include <time.h>
 
+#include "config.h"
+
 static void registry_global(void *data, struct wl_registry *registry,
                            uint32_t name, const char *interface,
                            uint32_t version) {
@@ -39,7 +41,7 @@ static void layer_surface_closed(void *data,
     state->active = 0;
 }
 
-Window* window_init(int width, int height) {
+Window* window_init() {
     Window* wl;
 
     wl = malloc(sizeof(Window));
@@ -49,8 +51,6 @@ Window* window_init(int width, int height) {
     wl->shm = NULL;
     wl->layer_shell = NULL;
     wl->output = NULL;
-    wl->width = width;
-    wl->height= height;
     wl->active = 1;
 
 
@@ -75,12 +75,12 @@ Window* window_init(int width, int height) {
     wl->layer_surface = zwlr_layer_shell_v1_get_layer_surface(
         wl->layer_shell, wl->surface, wl->output, ZWLR_LAYER_SHELL_V1_LAYER_TOP, "panel");
 
-    zwlr_layer_surface_v1_set_size(wl->layer_surface, width, height);
+    zwlr_layer_surface_v1_set_size(wl->layer_surface, WIDTH_PIXELS, HEIGHT_PIXELS);
     zwlr_layer_surface_v1_set_anchor(wl->layer_surface,
         ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP |
         ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM |
         ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT);
-    zwlr_layer_surface_v1_set_exclusive_zone(wl->layer_surface, width);
+    zwlr_layer_surface_v1_set_exclusive_zone(wl->layer_surface, WIDTH_PIXELS);
 
     wl->layer_surface_listener->configure = layer_surface_configure;
     wl->layer_surface_listener->closed = layer_surface_closed;
@@ -94,7 +94,7 @@ Window* window_init(int width, int height) {
 
 void window_draw_buffer(Window* win, struct wl_buffer* buf) {
     wl_surface_attach(win->surface, buf, 0, 0);
-    wl_surface_damage(win->surface, 0, 0, win->width, win->height);
+    wl_surface_damage(win->surface, 0, 0, WIDTH_PIXELS, HEIGHT_PIXELS);
     wl_surface_commit(win->surface);
 }
 

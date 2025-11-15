@@ -9,7 +9,7 @@ int main() {
     Window* win;
     Canvas* c;
 
-    win = window_init(180, 1440);
+    win = window_init();
     c = draw_init(win);
 
     time_t last_update = 0;

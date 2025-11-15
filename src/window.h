@@ -12,8 +12,6 @@
 typedef struct {
 
     int active;
-    int height;
-    int width;
 
     struct wl_display* display;
     struct wl_registry* registry;
@@ -30,7 +28,7 @@ typedef struct {
 
 } Window;
 
-Window* window_init(int width, int height);
+Window* window_init();
 
 void window_draw_buffer(Window* win, struct wl_buffer* buf);
 void window_handle_events(Window* win);

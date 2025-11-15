@@ -11,8 +11,6 @@
 
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
 
-#define HEIGHT 1440
-#define WIDTH 180 
 #define BAR_BG_COLOR 0.0, 0.0, 0.0, 0.0
 #define BAR_FG_COLOR 1.0, 1.0, 1.0, 1.0
 

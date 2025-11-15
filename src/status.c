@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "config.h"
 //#include <libnm/NetworkManager.h>
 
 float calculate_cpu_usage(CPUStats *prev, CPUStats *curr) {
@@ -45,15 +47,15 @@ static char* print_box(Box* b, char* s) {
 
     s += sprintf(s, "%s%*s%s\n", 
                  b->name, 
-                 STR_WIDTH - strlen(b->name) - strlen(b->value), "", 
+                 WIDTH_PIXELS - (int)strlen(b->name) - (int)strlen(b->value), "", 
                  b->value);
 
     // BAR
-    increments = 100 / (STR_WIDTH - 2);
+    increments = 100 / (WIDTH_CHARS - 2);
     for (i = 0; i < b->bars; i++) {
         s = strcat(s, "[") + 1;
 
-        for (j = 0; j < STR_WIDTH - 2; j++) {
+        for (j = 0; j < WIDTH_CHARS - 2; j++) {
             if (j * increments < b->percents[i])
                 s = strcat(s,"\xE2\x96\x88") + 3;             
             else 

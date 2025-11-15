@@ -6,7 +6,7 @@ GEN_DIR = gen
 
 # Compiler and flags
 CC = gcc
-CFLAGS = -Wall -Wextra -O2
+CFLAGS = -Wall -Wextra -g
 LIBS = $(shell pkg-config --libs wayland-client cairo pango pangocairo gobject-2.0) -lrt
 INCLUDES = $(shell pkg-config --cflags wayland-client cairo pango pangocairo gobject-2.0) -I$(GEN_DIR)
 
@@ -16,7 +16,7 @@ WLR_PROTO = wlr-layer-shell-unstable-v1.xml
 
 # Target and sources
 TARGET = dash
-SRC_FILES = main.c window.c
+SRC_FILES = main.c draw.c window.c status.c
 PROTO_FILES = wlr-layer-shell-unstable-v1-client-protocol.c xdg-shell-client-protocol.c
 
 # Object files from both source and generated directories
@@ -79,6 +79,9 @@ $(OBJ_DIR)/wlr-layer-shell-unstable-v1-client-protocol.o: $(WLR_SOURCE) $(WLR_HE
 # Link the final binary
 $(BIN_DIR)/$(TARGET): $(OBJECTS) | $(BIN_DIR)
 	$(CC) $(OBJECTS) $(LIBS) -o $@
+
+run:
+	./bin/dash
 
 clean:
 	rm -rf $(OBJ_DIR) $(BIN_DIR) $(GEN_DIR)

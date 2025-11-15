@@ -1,8 +1,6 @@
 #ifndef _STATUS_H_
 #define _STATUS_H_
 
-#define STR_WIDTH 12
-#define MAX_HEIGHT 
 
 typedef struct {
     int initalized;

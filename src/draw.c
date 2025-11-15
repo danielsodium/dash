@@ -8,9 +8,7 @@
 #include <pango/pangocairo.h>
 
 #include "status.h"
-
-#define WIDTH 180
-#define HEIGHT 1440
+#include "config.h"
 
 Canvas* draw_init(Window* w) {
     Canvas* c;
@@ -21,8 +19,8 @@ Canvas* draw_init(Window* w) {
 
     c = malloc(sizeof(Canvas));
 
-    stride = cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, WIDTH);
-    size = stride * HEIGHT;
+    stride = cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, WIDTH_PIXELS);
+    size = stride * HEIGHT_PIXELS;
 
     snprintf(shm_name, sizeof(shm_name), "/dash-%d", getpid());
 
@@ -47,12 +45,12 @@ Canvas* draw_init(Window* w) {
     }
 
     pool = wl_shm_create_pool(w->shm, fd, size);
-    c->buffer = wl_shm_pool_create_buffer(pool, 0, WIDTH, HEIGHT,
+    c->buffer = wl_shm_pool_create_buffer(pool, 0, WIDTH_PIXELS, HEIGHT_PIXELS,
                                                           stride, WL_SHM_FORMAT_ARGB8888);
     wl_shm_pool_destroy(pool);
     close(fd);
 
-    c->surface = cairo_image_surface_create_for_data(data, CAIRO_FORMAT_ARGB32, WIDTH,HEIGHT, stride);
+    c->surface = cairo_image_surface_create_for_data(data, CAIRO_FORMAT_ARGB32, WIDTH_PIXELS, HEIGHT_PIXELS, stride);
 
     return c;
 }
@@ -98,7 +96,7 @@ void draw_bar(Canvas* c) {
     get_widgets_bottom(widgets);
     pango_layout_set_text(layout, widgets, -1);
     pango_layout_get_pixel_size(layout, &text_width, &text_height);
-    cairo_move_to(cairo, 10, (HEIGHT - text_height - 10));
+    cairo_move_to(cairo, 10, (HEIGHT_PIXELS - text_height - 10));
     pango_cairo_show_layout(cairo, layout);
 
     pango_font_description_free(desc);
