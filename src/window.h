@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <cairo/cairo.h>
 #include <wayland-client.h>
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
 #include "xdg-shell-client-protocol.h"
@@ -30,6 +31,9 @@ typedef struct {
 } Window;
 
 Window* window_init(int width, int height);
+
+void window_draw_buffer(Window* win, struct wl_buffer* buf);
+void window_handle_events(Window* win);
 void window_destroy(Window* win);
 
 #endif

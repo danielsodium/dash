@@ -59,7 +59,6 @@ Window* window_init(int width, int height) {
         perror("Failed to connect to display");
         return NULL;
     }
-    printf("Connected to display\n");
 
     wl->registry = wl_display_get_registry(wl->display);
     wl->registry_listener->global = registry_global;
@@ -89,14 +88,24 @@ Window* window_init(int width, int height) {
 
     wl_surface_commit(wl->surface);
     wl_display_roundtrip(wl->display);
-    while (wl->active) {
-        wl_display_dispatch_pending(wl->display);
-    }
 
     return wl;
 }
 
+void window_draw_buffer(Window* win, struct wl_buffer* buf) {
+    wl_surface_attach(win->surface, buf, 0, 0);
+    wl_surface_damage(win->surface, 0, 0, win->width, win->height);
+    wl_surface_commit(win->surface);
+}
+
+void window_handle_events(Window* win) {
+    wl_display_dispatch_pending(win->display);
+    wl_display_flush(win->display);
+}
+
 void window_destroy(Window* win) {
+    zwlr_layer_surface_v1_destroy(win->layer_surface);
+    wl_surface_destroy(win->surface);
     wl_display_disconnect(win->display);
     free(win->registry_listener);
     free(win);
