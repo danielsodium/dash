@@ -47,7 +47,7 @@ static char* print_box(Box* b, char* s) {
 
     s += sprintf(s, "%s%*s%s\n", 
                  b->name, 
-                 WIDTH_PIXELS - (int)strlen(b->name) - (int)strlen(b->value), "", 
+                 WIDTH_CHARS - (int)strlen(b->name) - (int)strlen(b->value), "", 
                  b->value);
 
     // BAR

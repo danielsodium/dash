@@ -5,12 +5,10 @@
 #include <sys/mman.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <pango/pangocairo.h>
 
-#include "status.h"
 #include "config.h"
 
-Canvas* draw_init(Window* w) {
+Canvas* canvas_init(struct wl_shm* shm) {
     Canvas* c;
     struct wl_shm_pool* pool;
     char shm_name[32];
@@ -44,7 +42,7 @@ Canvas* draw_init(Window* w) {
         return NULL;
     }
 
-    pool = wl_shm_create_pool(w->shm, fd, size);
+    pool = wl_shm_create_pool(shm, fd, size);
     c->buffer = wl_shm_pool_create_buffer(pool, 0, WIDTH_PIXELS, HEIGHT_PIXELS,
                                                           stride, WL_SHM_FORMAT_ARGB8888);
     wl_shm_pool_destroy(pool);
@@ -52,56 +50,54 @@ Canvas* draw_init(Window* w) {
 
     c->surface = cairo_image_surface_create_for_data(data, CAIRO_FORMAT_ARGB32, WIDTH_PIXELS, HEIGHT_PIXELS, stride);
 
+
+    c->font = pango_font_description_from_string("JetBrainsMono Nerd Font 18");
+
     return c;
 }
 
-static void get_widgets_top(char* o) {
-    time_t now = time(NULL);
-    struct tm *tm_info = localtime(&now);
-    char buffer[32];
-    strftime(buffer, sizeof(buffer), "   %I:%M %p\n   %A", tm_info);
-    strcpy(o, buffer);
-}
-
-static void get_widgets_bottom(char* o) {
-    o = print_cpu(o);
-    *(o++) = '\n';
-    o = print_mem(o);
-    *(o++) = '\n';
-    o = print_battery(o);
-    *(o-1) = '\0';
-}
-
-void draw_bar(Canvas* c) {
-    cairo_t *cairo = cairo_create(c->surface);
-    int text_width, text_height;
-    char widgets[1024];
+void draw_start(Canvas* c) {
+    c->cairo = cairo_create(c->surface);
 
     // Clear background
-    cairo_set_source_rgba(cairo, 0.0, 0.0, 0.0, 0.0);
-    cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
-    cairo_paint(cairo);
+    cairo_set_source_rgba(c->cairo, 0.0, 0.0, 0.0, 0.0);
+    cairo_set_operator(c->cairo, CAIRO_OPERATOR_SOURCE);
+    cairo_paint(c->cairo);
 
-    PangoLayout *layout = pango_cairo_create_layout(cairo);
-    PangoFontDescription *desc = pango_font_description_from_string("JetBrainsMono Nerd Font 18");
-    pango_layout_set_font_description(layout, desc);
-    get_widgets_top(widgets);
-    pango_layout_set_text(layout, widgets, -1);
-    pango_layout_get_pixel_size(layout, &text_width, &text_height);
-
-    cairo_set_source_rgba(cairo, 1.0,1.0,1.0,1.0);
-    cairo_move_to(cairo, 0, 0);
-    pango_cairo_show_layout(cairo, layout);
-
-    get_widgets_bottom(widgets);
-    pango_layout_set_text(layout, widgets, -1);
-    pango_layout_get_pixel_size(layout, &text_width, &text_height);
-    cairo_move_to(cairo, 10, (HEIGHT_PIXELS - text_height - 10));
-    pango_cairo_show_layout(cairo, layout);
-
-    pango_font_description_free(desc);
-    g_object_unref(layout);
-    cairo_destroy(cairo);
+    c->layout = pango_cairo_create_layout(c->cairo);
+    pango_layout_set_font_description(c->layout, c->font);
 }
 
+void draw_to_buffer(Canvas* c) {
+    g_object_unref(c->layout);
+    cairo_destroy(c->cairo);
+}
 
+void canvas_destroy(Canvas* c) {
+    pango_font_description_free(c->font);
+}
+
+void draw_string(Canvas* c, char* str, Anchor a) {
+    int text_width, text_height;
+
+    pango_layout_set_text(c->layout, str, -1);
+    pango_layout_get_pixel_size(c->layout, &text_width, &text_height);
+    cairo_set_source_rgba(c->cairo, 1.0,1.0,1.0,1.0);
+
+    switch (a) {
+        case ANCHOR_TOP:
+            cairo_move_to(c->cairo, 0, 0);
+            break;
+        case ANCHOR_BOTTOM:
+            cairo_move_to(c->cairo, 10, HEIGHT_PIXELS - text_height - 10);
+            break;
+        case ANCHOR_CENTER:
+            cairo_move_to(c->cairo, 10, (HEIGHT_PIXELS - text_height/2 - 10)/2);
+            break;
+        default:
+            cairo_move_to(c->cairo, 0, 0);
+            break;
+    }
+
+    pango_cairo_show_layout(c->cairo, c->layout);
+}
