@@ -2,8 +2,10 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <string.h>
 #include <time.h>
+#include <linux/input-event-codes.h>
 
 #include "config.h"
 #include "draw.h"
@@ -25,6 +27,11 @@ static void registry_global(void *data, struct wl_registry *registry,
             state->output = wl_registry_bind(registry, name, &wl_output_interface, 1);
         }
     } 
+#ifdef DRUN
+    else if (strcmp(interface, wl_seat_interface.name) == 0) {
+        state->seat = wl_registry_bind(registry, name, &wl_seat_interface, 5);
+    } 
+#endif
 }
 
 static void layer_surface_configure(void *data,
@@ -43,12 +50,68 @@ static void layer_surface_closed(void *data,
     state->active = 0;
 }
 
+#ifdef DRUN
+
+static void key_handler(void *data, struct wl_keyboard *kbd, uint32_t serial,
+                       uint32_t time, uint32_t key, uint32_t state) {
+    (void)data; (void)kbd; (void)serial; (void)time;
+    if (state != 1) return;
+    if (key == KEY_ESC) exit(0);
+    
+    printf("Key: %d\n", key);
+}
+
+static void kbd_keymap(void *d, struct wl_keyboard *k, uint32_t f, int32_t fd, uint32_t s) { 
+    (void)d; (void)k; (void)f; (void)s;
+    close(fd); 
+}
+static void kbd_enter(void *d, struct wl_keyboard *k, uint32_t s, struct wl_surface *surf, struct wl_array *keys) {
+    (void)d; (void)k; (void)s; (void)surf; (void)keys;
+}
+static void kbd_leave(void *d, struct wl_keyboard *k, uint32_t s, struct wl_surface *surf) {
+    (void)d; (void)k; (void)s; (void)surf;
+}
+static void kbd_mods(void *d, struct wl_keyboard *k, uint32_t s, uint32_t dep, uint32_t lat, uint32_t lock, uint32_t grp) {
+    (void)d; (void)k; (void)s; (void)dep; (void)lat; (void)lock; (void)grp;
+}
+static void kbd_repeat(void *d, struct wl_keyboard *k, int32_t rate, int32_t delay) {
+    (void)d; (void)k; (void)rate; (void)delay;
+}
+
+static void handle_keyboard(void *data, struct wl_seat *seat, uint32_t caps) {
+    (void)seat;
+    Window* wl = data;
+    if ((caps & WL_SEAT_CAPABILITY_KEYBOARD) && !wl->keyboard) {
+        wl->keyboard = wl_seat_get_keyboard(wl->seat);
+        wl_keyboard_add_listener(wl->keyboard, wl->keyboard_listener, NULL);
+    }
+}
+static void seat_name(void *data, struct wl_seat *seat, const char *name) {
+    (void)data; (void)seat; (void)name;
+}
+
+#endif
+
 Window* window_init() {
     Window* wl;
 
     wl = malloc(sizeof(Window));
     wl->registry_listener = malloc(sizeof(struct wl_registry_listener));
     wl->layer_surface_listener = malloc(sizeof(struct zwlr_layer_surface_v1_listener));
+#ifdef DRUN
+    wl->keyboard = NULL;
+    wl->seat_listener = malloc(sizeof(struct wl_seat_listener));
+    wl->seat_listener->capabilities = handle_keyboard,
+    wl->seat_listener->name = seat_name,
+
+    wl->keyboard_listener = malloc(sizeof(struct wl_keyboard_listener));
+    wl->keyboard_listener->keymap = kbd_keymap,
+    wl->keyboard_listener->enter = kbd_enter,
+    wl->keyboard_listener->leave = kbd_leave,
+    wl->keyboard_listener->key = key_handler,
+    wl->keyboard_listener->modifiers = kbd_mods,
+    wl->keyboard_listener->repeat_info = kbd_repeat,
+#endif
     wl->compositor = NULL;
     wl->shm = NULL;
     wl->layer_shell = NULL;
@@ -65,8 +128,14 @@ Window* window_init() {
     wl->registry = wl_display_get_registry(wl->display);
     wl->registry_listener->global = registry_global,
     wl->registry_listener->global_remove = NULL;
+
     wl_registry_add_listener(wl->registry, wl->registry_listener, wl);
     wl_display_roundtrip(wl->display);
+
+#ifdef DRUN
+    wl_seat_add_listener(wl->seat, wl->seat_listener, wl);
+    wl_display_roundtrip(wl->display);
+#endif
 
     if (!wl->compositor || !wl->shm || !wl->layer_shell) {
         perror("Failed to load wayland interface");
@@ -93,11 +162,6 @@ Window* window_init() {
 #endif
         );
     zwlr_layer_surface_v1_set_exclusive_zone(wl->layer_surface, WIDTH_PIXELS);
-
-    wl->layer_surface_listener->configure = layer_surface_configure;
-    wl->layer_surface_listener->closed = layer_surface_closed;
-    zwlr_layer_surface_v1_add_listener(wl->layer_surface, wl->layer_surface_listener, wl);
-
     zwlr_layer_surface_v1_set_keyboard_interactivity(wl->layer_surface,
 #ifdef DRUN
             ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_EXCLUSIVE
@@ -105,6 +169,11 @@ Window* window_init() {
             ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_NONE
 #endif
     );
+
+    wl->layer_surface_listener->configure = layer_surface_configure;
+    wl->layer_surface_listener->closed = layer_surface_closed;
+    zwlr_layer_surface_v1_add_listener(wl->layer_surface, wl->layer_surface_listener, wl);
+
 
     wl_surface_commit(wl->surface);
     wl_display_roundtrip(wl->display);
@@ -134,7 +203,7 @@ void window_draw(Window* win) {
 }
 
 void window_handle_events(Window* win) {
-    wl_display_dispatch_pending(win->display);
+    wl_display_dispatch(win->display);
     wl_display_flush(win->display);
 }
 

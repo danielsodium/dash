@@ -24,7 +24,9 @@ typedef struct {
     struct wl_output* output;
 #ifdef DRUN
     struct wl_seat* seat;
-    struct wl_listener* seat_listener;
+    struct wl_seat_listener* seat_listener;
+    struct wl_keyboard* keyboard;
+    struct wl_keyboard_listener* keyboard_listener;
 #endif
 
     struct wl_surface* surface;

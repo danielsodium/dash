@@ -92,7 +92,7 @@ void draw_string(Canvas* c, char* str, Anchor a) {
             cairo_move_to(c->cairo, 10, HEIGHT_PIXELS - text_height - 10);
             break;
         case ANCHOR_CENTER:
-            cairo_move_to(c->cairo, 10, (HEIGHT_PIXELS - text_height/2 - 10)/2);
+            cairo_move_to(c->cairo, 10, (HEIGHT_PIXELS - text_height/2 - 10)/4);
             break;
         default:
             cairo_move_to(c->cairo, 0, 0);
