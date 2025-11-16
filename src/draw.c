@@ -50,8 +50,7 @@ Canvas* canvas_init(struct wl_shm* shm) {
 
     c->surface = cairo_image_surface_create_for_data(data, CAIRO_FORMAT_ARGB32, WIDTH_PIXELS, HEIGHT_PIXELS, stride);
 
-
-    c->font = pango_font_description_from_string("JetBrainsMono Nerd Font 18");
+    c->font = pango_font_description_from_string("JetBrainsMono Nerd Font 13");
 
     return c;
 }

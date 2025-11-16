@@ -22,12 +22,11 @@ typedef struct {
     struct wl_shm* shm;
     struct zwlr_layer_shell_v1* layer_shell;
     struct wl_output* output;
-#ifdef DRUN
     struct wl_seat* seat;
+
     struct wl_seat_listener* seat_listener;
     struct wl_keyboard* keyboard;
     struct wl_keyboard_listener* keyboard_listener;
-#endif
 
     struct wl_surface* surface;
     struct zwlr_layer_surface_v1 *layer_surface;
@@ -37,8 +36,10 @@ typedef struct {
 
 } Window;
 
-Window* window_init();
+Window* window_create(int width, int height, int anchor, int layer);
 
+void window_attach_keyboard_listener(Window* w);
+void window_commit(Window* w);
 void window_draw(Window* win);
 void window_handle_events(Window* win);
 void window_destroy(Window* win);
