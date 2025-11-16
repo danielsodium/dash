@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "config.h"
+#define WIDTH_CHARS 12
 //#include <libnm/NetworkManager.h>
 
 float calculate_cpu_usage(CPUStats *prev, CPUStats *curr) {
