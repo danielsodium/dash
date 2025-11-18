@@ -6,6 +6,9 @@
 #include <string.h>
 #include <time.h>
 #include <sys/mman.h>
+#include <sys/epoll.h>
+#include <errno.h>
+#include <sys/timerfd.h>
 
 #include "widgets.h"
 
@@ -28,6 +31,7 @@ static void _kb_mods(void *d, struct wl_keyboard *k, uint32_t s, uint32_t dep,
 static void _kb_repeat(void *d, struct wl_keyboard *k, int32_t rate, int32_t delay);
 static void _handle_keyboard(void *data, struct wl_seat *seat, uint32_t caps);
 static void _seat_name(void *data, struct wl_seat *seat, const char *name);
+static int _timer_create(long interval_ms);
 
 Window* window_create(int width, int height, int anchor, int layer) {
     Window* w;
@@ -108,25 +112,76 @@ void window_attach_keyboard_listener(Window* w, void(*on_key_func)(xkb_keysym_t*
     wl_display_roundtrip(w->display);
 }
 
-void window_commit(Window* w, void(*draw_func)(cairo_t*, int*, void*)) {
+void window_attach_step(Window* w, int interval, void(*step_func)(int*, void*)) {
+    w->step_attached = 1;
+    w->step_interval = interval;
+    w->step = step_func;
+}
+
+void window_commit(Window* w, int(*draw_func)(cairo_t*, int*, void*)) {
     wl_surface_commit(w->surface);
     wl_display_roundtrip(w->display);
     w->canvas = canvas_create(w->width,  w->height, w->shm);
     w->active = 1;
     w->draw = draw_func;
+
+    // Create event loop
+    w->epoll_fd = epoll_create1(0);
+    if (w->epoll_fd == -1) {
+        perror("Failed to create epoll");
+        return;
+    }
+
+    w->display_fd = wl_display_get_fd(w->display);
+    struct epoll_event ev = {0};
+    ev.events = EPOLLIN;
+    ev.data.fd = w->display_fd;
+    if (epoll_ctl(w->epoll_fd, EPOLL_CTL_ADD, w->display_fd, &ev) == -1) {
+        perror("Failed to epoll wayland display");
+        return;
+    }
+
+    if (w->step_attached) {
+        w->step_fd = _timer_create(w->step_interval);
+        if (w->step_fd == -1) {
+            perror("Failed to create step timer");
+            return;
+        }
+        ev.events = EPOLLIN;
+        ev.data.fd = w->step_fd;
+        if (epoll_ctl(w->epoll_fd, EPOLL_CTL_ADD, w->step_fd, &ev) == -1) {
+            perror("Failed to epoll step");
+            return;
+        }
+    }
+
+    // DRAW
+    w->draw_fd = _timer_create(150);
+    if (w->draw_fd == -1) {
+        perror("Failed to create draw timer");
+        return;
+    }
+    ev.events = EPOLLIN;
+    ev.data.fd = w->draw_fd;
+    if (epoll_ctl(w->epoll_fd, EPOLL_CTL_ADD, w->draw_fd, &ev) == -1) {
+        perror("Failed to epoll draw");
+        return;
+    }
+
 }
 
 void window_draw(Window* w) {
-    w->draw(w->canvas->cairo, &w->active, w->data);
+    int refresh = w->draw(w->canvas->cairo, &w->active, w->data);
+    if (!refresh) return;
     wl_surface_attach(w->surface, w->canvas->buffer, 0, 0);
     wl_surface_damage(w->surface, 0, 0, w->width, w->height);
     wl_surface_commit(w->surface);
+    wl_display_flush(w->display);
 }
 
 void window_handle_events(Window* w) {
     wl_display_roundtrip(w->display);
     wl_display_dispatch_pending(w->display);
-    wl_display_flush(w->display);
 }
 
 void* window_get_data(Window* w) {
@@ -137,22 +192,66 @@ void window_set_data(Window* w, void* data) {
 }
 
 void window_loop(Window* w) {
-    time_t last_update, now;
-    last_update = 0;
-
-    window_draw(w);
+    struct epoll_event events[10];
     while (w->active) {
-        now = time(NULL);
-        if (now != last_update) {
-            window_draw(w);
-            last_update = now;
+        while (wl_display_prepare_read(w->display) != 0) {
+            wl_display_dispatch_pending(w->display);
         }
-        window_handle_events(w);
-        usleep(10000);
+        wl_display_flush(w->display);
+
+        int nfds = epoll_wait(w->epoll_fd, events, 10, -1);
+        if (nfds == -1) {
+            if (errno == EINTR) {
+                wl_display_cancel_read(w->display);
+                continue;
+            }
+            perror("Failed to wait epoll");
+            wl_display_cancel_read(w->display);
+            break;
+        }
+
+        int wl_has_data = 0;
+        for (int i = 0; i < nfds; i++) {
+            if (events[i].data.fd == w->display_fd) {
+                wl_has_data = 1;
+                break;
+            }
+        }
+
+        if (wl_has_data) {
+            wl_display_read_events(w->display);
+            wl_display_dispatch_pending(w->display);
+        } else {
+            wl_display_cancel_read(w->display);
+        }
+
+        for (int i = 0; i < nfds; i++) {
+            if (events[i].data.fd == w->step_fd) {
+                uint64_t exp;
+                read(w->step_fd, &exp, sizeof(exp));
+                w->step(&w->active, w->data);
+            } else if (events[i].data.fd == w->draw_fd) {
+                uint64_t exp;
+                read(w->draw_fd, &exp, sizeof(exp));
+                window_draw(w);
+            }
+        }
+
     }
+
 }
 
 void window_destroy(Window* w) {
+
+    if (w->step_attached && w->step_fd != -1) {
+        close(w->step_fd);
+    }
+    if (w->draw_fd != -1) {
+        close(w->draw_fd);
+    }
+    if (w->epoll_fd != -1) {
+        close(w->epoll_fd);
+    }
     if (w->keyboard_attached) {
         xkb_state_unref(w->keyboard_state);
         xkb_keymap_unref(w->keyboard_keymap);
@@ -267,4 +366,25 @@ static void _handle_keyboard(void *data, struct wl_seat *seat, uint32_t caps) {
 
 static void _seat_name(void *data, struct wl_seat *seat, const char *name) {
     (void)data; (void)seat; (void)name;
+}
+
+static int _timer_create(long interval_ms) {
+    int fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK);
+    if (fd == -1) {
+        perror("Failed to create timer");
+        return -1;
+    }
+
+    struct itimerspec spec = {0};
+    spec.it_value.tv_sec = interval_ms / 1000;
+    spec.it_value.tv_nsec = (interval_ms % 1000) * 1000000;
+    spec.it_interval = spec.it_value;
+    
+    if (timerfd_settime(fd, 0, &spec, NULL) == -1) {
+        perror("Failed to set timer");
+        close(fd);
+        return -1;
+    }
+
+    return fd;
 }

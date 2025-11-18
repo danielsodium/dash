@@ -8,6 +8,9 @@
 #define WIDTH_CHARS 12
 
 typedef struct {
+
+    int update;
+
     PangoLayout* layout;
     PangoFontDescription* font;
 
@@ -22,7 +25,7 @@ typedef struct {
 } DRunData;
 
 void drun_init(DRunData* d, cairo_t* cairo);
-void drun_draw(cairo_t* cairo, int* active, void* data);
+int drun_draw(cairo_t* cairo, int* active, void* data);
 void drun_on_key(xkb_keysym_t* key, int* active, void* data);
 void drun_destroy(DRunData* d);
 

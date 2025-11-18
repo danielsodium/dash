@@ -5,6 +5,7 @@
 #include <string.h>
 
 #define WIDTH_CHARS 12
+#define BLOCK_CHAR "■"
 //#include <libnm/NetworkManager.h>
 
 float calculate_cpu_usage(CPUStats *prev, CPUStats *curr) {
@@ -57,7 +58,7 @@ static char* print_box(Box* b, char* s) {
 
         for (j = 0; j < WIDTH_CHARS - 2; j++) {
             if (j * increments < b->percents[i])
-                s = strcat(s,"\xE2\x96\x88") + 3;             
+                s = strcat(s, BLOCK_CHAR) + 3;             
             else 
                 s = strcat(s, " ") + 1;
         }

@@ -92,14 +92,15 @@ void drun_init(DRunData* d, cairo_t* cairo) {
     d->layout = pango_cairo_create_layout(cairo);
     d->font = pango_font_description_from_string("JetBrainsMono Nerd Font 18");
     pango_layout_set_font_description(d->layout, d->font);
+    d->update = 1;
 
     drun_get_bin(d);
 }
 
-void drun_draw(cairo_t* cairo, int* active, void* data) {
+int drun_draw(cairo_t* cairo, int* active, void* data) {
     (void)active;
     DRunData* d = data;
-    char str[1024];
+    if (!d->update) return 0;
 
     // Clear background
     cairo_set_source_rgba(cairo, 0.0, 0.0, 0.0, 0.0);
@@ -108,10 +109,13 @@ void drun_draw(cairo_t* cairo, int* active, void* data) {
 
     cairo_move_to(cairo, 0, 0);
     cairo_set_source_rgba(cairo, 1.0,1.0,1.0,1.0);
+    char str[1024];
     drun_str(str, d);
     pango_layout_set_text(d->layout, str, -1);
     pango_cairo_update_layout(cairo, d->layout);
     pango_cairo_show_layout(cairo, d->layout);
+
+    return 1;
 }
 
 void drun_on_key(xkb_keysym_t* key, int* active, void* data) {
@@ -123,8 +127,10 @@ void drun_on_key(xkb_keysym_t* key, int* active, void* data) {
     }
     if (*key == XKB_KEY_BackSpace) {
         size_t len = strlen(d->input);
-        if (len > 0)
+        if (len > 0) {
             d->input[len - 1] = '\0';
+            d->update = 1;
+        }
         return;
     }
 
@@ -143,6 +149,7 @@ void drun_on_key(xkb_keysym_t* key, int* active, void* data) {
     if (n > 0 && isalnum((unsigned char) *c)) {
         strcat(d->input, c);
         drun_find(d);
+        d->update = 1;
     }
 }
 
@@ -156,5 +163,5 @@ void drun_destroy(DRunData* d) {
         free(d->bins[i]);
     }
     free(d->bins);
-
+    free(d);
 }
