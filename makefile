@@ -7,8 +7,8 @@ GEN_DIR = gen
 # Compiler and flags
 CC = gcc
 CFLAGS = -Wall -Wextra -g
-LIBS = $(shell pkg-config --libs wayland-client cairo pango pangocairo gobject-2.0 xkbcommon) -lrt
-INCLUDES = $(shell pkg-config --cflags wayland-client cairo pango pangocairo gobject-2.0 xkbcommon) -I$(GEN_DIR)
+LIBS = $(shell pkg-config --libs wayland-client cairo pango pangocairo gobject-2.0 xkbcommon fontconfig wayland-protocols pangoft2) -lrt
+INCLUDES = $(shell pkg-config --cflags wayland-client cairo pango pangocairo gobject-2.0 xkbcommon fontconfig wayland-protocols pangoft2) -I$(GEN_DIR)
 
 # Protocol directories
 PROTO_DIR = /usr/share/wayland-protocols
@@ -17,7 +17,7 @@ WLR_PROTO = wlr-layer-shell-unstable-v1.xml
 # Target and sources
 TARGET = dash
 DRUN_TARGET = drun
-SRC_FILES = main.c canvas.c window.c status.c widgets.c
+SRC_FILES = main.c canvas.c window.c drun.c status.c widgets.c
 PROTO_FILES = wlr-layer-shell-unstable-v1-client-protocol.c xdg-shell-client-protocol.c
 
 # Object files from both source and generated directories

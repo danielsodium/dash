@@ -67,7 +67,8 @@ Window* window_create(int width, int height, int anchor, int layer) {
         w->layer_shell, w->surface, w->output, layer, "window");
     zwlr_layer_surface_v1_set_size(w->layer_surface, w->width=width, w->height=height);
     zwlr_layer_surface_v1_set_anchor(w->layer_surface, anchor);
-    zwlr_layer_surface_v1_set_exclusive_zone(w->layer_surface, width);
+    if (layer != ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY)
+        zwlr_layer_surface_v1_set_exclusive_zone(w->layer_surface, width);
     zwlr_layer_surface_v1_set_keyboard_interactivity(w->layer_surface,
             ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_NONE);
     *(w->layer_surface_listener) = (struct zwlr_layer_surface_v1_listener) {
@@ -114,10 +115,7 @@ void window_commit(Window* w, void(*draw_func)(cairo_t*, int*, void*)) {
 }
 
 void window_draw(Window* w) {
-    canvas_start_buffer(w->canvas);
     w->draw(w->canvas->cairo, &w->active, w->data);
-    canvas_draw_buffer(w->canvas);
-
     wl_surface_attach(w->surface, w->canvas->buffer, 0, 0);
     wl_surface_damage(w->surface, 0, 0, w->width, w->height);
     wl_surface_commit(w->surface);
@@ -148,22 +146,11 @@ void window_loop(Window* w) {
             last_update = now;
         }
         window_handle_events(w);
-        usleep(100000);
+        usleep(10000);
     }
 }
 
 void window_destroy(Window* w) {
-    canvas_destroy(w->canvas);
-    zwlr_layer_surface_v1_destroy(w->layer_surface);
-    wl_surface_destroy(w->surface);
-    wl_compositor_destroy(w->compositor);
-    zwlr_layer_shell_v1_destroy(w->layer_shell);
-    wl_shm_destroy(w->shm);
-    wl_output_destroy(w->output);
-    wl_seat_destroy(w->seat);
-    wl_registry_destroy(w->registry);
-    wl_display_disconnect(w->display);
-
     if (w->keyboard_attached) {
         xkb_state_unref(w->keyboard_state);
         xkb_keymap_unref(w->keyboard_keymap);
@@ -172,7 +159,16 @@ void window_destroy(Window* w) {
         free(w->keyboard_listener);
         free(w->seat_listener);
     }
-
+    canvas_destroy(w->canvas);
+    zwlr_layer_surface_v1_destroy(w->layer_surface);
+    wl_surface_destroy(w->surface);
+    wl_seat_destroy(w->seat);
+    wl_compositor_destroy(w->compositor);
+    zwlr_layer_shell_v1_destroy(w->layer_shell);
+    wl_shm_destroy(w->shm);
+    wl_output_destroy(w->output);
+    wl_registry_destroy(w->registry);
+    wl_display_disconnect(w->display);
     free(w->layer_surface_listener);
     free(w->registry_listener);
     free(w);
@@ -217,6 +213,7 @@ static void _kb_key(void *data, struct wl_keyboard *kbd, uint32_t serial,
 
     xkb_keysym_t sym = xkb_state_key_get_one_sym(w->keyboard_state, key+8);
     w->on_key(&sym, &w->active, w->data);
+    window_draw(w);
 }
 
 static void _kb_keymap(void *d, struct wl_keyboard *k, uint32_t f, int32_t fd, uint32_t s) { 
@@ -240,7 +237,6 @@ static void _kb_keymap(void *d, struct wl_keyboard *k, uint32_t f, int32_t fd, u
     munmap(map_str, s);
     if (!w->keyboard_keymap) return;
     w->keyboard_state = xkb_state_new(w->keyboard_keymap);
-
 }
 
 static void _kb_enter(void *d, struct wl_keyboard *k, uint32_t s, struct wl_surface *surf, struct wl_array *keys) {

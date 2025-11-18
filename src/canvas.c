@@ -39,7 +39,8 @@ Canvas* canvas_create(int width, int height, struct wl_shm* shm) {
         close(fd);
         return NULL;
     }
-    munmap(data, size);
+    c->data = data;
+    c->data_size = size;
 
     pool = wl_shm_create_pool(shm, fd, size);
     c->buffer = wl_shm_pool_create_buffer(pool, 0, width, height,
@@ -49,19 +50,14 @@ Canvas* canvas_create(int width, int height, struct wl_shm* shm) {
 
     c->surface = cairo_image_surface_create_for_data(data, CAIRO_FORMAT_ARGB32, 
                                                      width, height, stride);
-
+    c->cairo = cairo_create(c->surface);
     return c;
 }
 
-void canvas_start_buffer(Canvas* c) {
-    c->cairo = cairo_create(c->surface);
-}
-
-void canvas_draw_buffer(Canvas* c) {
-    cairo_destroy(c->cairo);
-}
-
 void canvas_destroy(Canvas* c) {
+    cairo_surface_flush(c->surface);
+    cairo_destroy(c->cairo);
+    munmap(c->data, c->data_size);
     wl_buffer_destroy(c->buffer);
     cairo_surface_destroy(c->surface);
     free(c);
