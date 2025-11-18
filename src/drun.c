@@ -21,7 +21,7 @@ static void drun_str(char* str, DRunData* d) {
     int input_diff = strlen(d->input) - WIDTH_CHARS + 3;
     char* last_chars = d->input + ((input_diff > 0) ? input_diff : 0);
 
-    sprintf(str, "\n\n\n\n\ndrun\n$ %s\xE2\x96\x88\n%s", last_chars, list);
+    sprintf(str, "\n\n\ndrun\n$ %s\xE2\x96\x88\n%s", last_chars, list);
 }
 
 static void drun_get_bin(DRunData *d) {

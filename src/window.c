@@ -69,6 +69,8 @@ Window* window_create(int width, int height, int anchor, int layer) {
     zwlr_layer_surface_v1_set_anchor(w->layer_surface, anchor);
     if (layer != ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY)
         zwlr_layer_surface_v1_set_exclusive_zone(w->layer_surface, width);
+    else
+        zwlr_layer_surface_v1_set_exclusive_zone(w->layer_surface, -1);
     zwlr_layer_surface_v1_set_keyboard_interactivity(w->layer_surface,
             ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_NONE);
     *(w->layer_surface_listener) = (struct zwlr_layer_surface_v1_listener) {

@@ -6,25 +6,25 @@
 
 #include "window.h"
 #include "drun.h"
+#include "bar.h"
 
 void run_bar() {
     Window* w;
-    DRunData data;
+    BarData data;
     int layer, anchor;
 
-    layer = ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY;
+    layer = ZWLR_LAYER_SHELL_V1_LAYER_TOP;
     anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP |
              ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM |
              ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT;
+
     w = window_create(180, 1440, anchor, layer);
-    window_attach_keyboard_listener(w, drun_on_key);
+    window_commit(w, bar_draw);
 
-    window_commit(w, drun_draw);
-
-    drun_init(&data, w->canvas->cairo);
+    bar_init(&data, w->canvas->cairo);
     window_set_data(w, (void*) &data);
     window_loop(w);
-    drun_destroy(&data);
+    bar_destroy(&data);
     window_destroy(w);
 }
 
