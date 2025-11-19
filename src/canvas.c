@@ -57,8 +57,8 @@ Canvas* canvas_create(int width, int height, struct wl_shm* shm) {
 void canvas_destroy(Canvas* c) {
     cairo_surface_flush(c->surface);
     cairo_destroy(c->cairo);
+    cairo_surface_destroy(c->surface);
     munmap(c->data, c->data_size);
     wl_buffer_destroy(c->buffer);
-    cairo_surface_destroy(c->surface);
     free(c);
 }

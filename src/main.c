@@ -19,15 +19,13 @@ void run_bar() {
              ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT;
 
     w = window_create(180, 1440, anchor, layer);
+    window_attach_init(w, bar_init);
     window_attach_step(w, 1000, bar_step);
+    window_attach_draw(w, bar_draw);
+    window_attach_data(w, (void*) data);
+    window_attach_destroy(w, bar_destroy);
 
-    window_commit(w, bar_draw);
-
-    bar_init(data, w->canvas->cairo);
-    window_set_data(w, (void*) data);
-    window_loop(w);
-    bar_destroy(data);
-    window_destroy(w);
+    window_run(w);
 }
 
 void run_drun() {
@@ -39,16 +37,14 @@ void run_drun() {
     anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP |
              ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM |
              ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT;
+
     w = window_create(180, 1440, anchor, layer);
+    window_attach_draw(w, drun_draw);
+    window_attach_init(w, drun_init);
+    window_attach_data(w, (void*) data);
+    window_attach_destroy(w, drun_destroy);
     window_attach_keyboard_listener(w, drun_on_key);
-
-    window_commit(w, drun_draw);
-
-    drun_init(data, w->canvas->cairo);
-    window_set_data(w, (void*) data);
-    window_loop(w);
-    drun_destroy(data);
-    window_destroy(w);
+    window_run(w);
 }
 
 int main() {

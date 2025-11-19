@@ -1,14 +1,15 @@
 # Directory structure
 SRC_DIR = src
-OBJ_DIR = obj
+OBJ_DIR = build
 BIN_DIR = bin
 GEN_DIR = gen
+INCLUDE_DIR = include
 
 # Compiler and flags
 CC = gcc
 CFLAGS = -Wall -Wextra -g
 LIBS = $(shell pkg-config --libs wayland-client cairo pango pangocairo gobject-2.0 xkbcommon fontconfig wayland-protocols pangoft2) -lrt
-INCLUDES = $(shell pkg-config --cflags wayland-client cairo pango pangocairo gobject-2.0 xkbcommon fontconfig wayland-protocols pangoft2) -I$(GEN_DIR)
+INCLUDES = $(shell pkg-config --cflags wayland-client cairo pango pangocairo gobject-2.0 xkbcommon fontconfig wayland-protocols pangoft2) -I$(INCLUDE_DIR) -I$(GEN_DIR)
 
 # Protocol directories
 PROTO_DIR = /usr/share/wayland-protocols
@@ -17,7 +18,7 @@ WLR_PROTO = wlr-layer-shell-unstable-v1.xml
 # Target and sources
 TARGET = dash
 DRUN_TARGET = drun
-SRC_FILES = main.c canvas.c window.c drun.c bar.c status.c widgets.c
+SRC_FILES = main.c canvas.c window.c keyboard.c drun.c bar.c status.c widgets.c
 PROTO_FILES = wlr-layer-shell-unstable-v1-client-protocol.c xdg-shell-client-protocol.c
 
 # Object files from both source and generated directories

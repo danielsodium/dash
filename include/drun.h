@@ -24,9 +24,9 @@ typedef struct {
 
 } DRunData;
 
-void drun_init(DRunData* d, cairo_t* cairo);
-int drun_draw(cairo_t* cairo, int* active, void* data);
-void drun_on_key(xkb_keysym_t* key, int* active, void* data);
-void drun_destroy(DRunData* d);
+void drun_init(cairo_t* cairo, void* data);
+void drun_draw(cairo_t* cairo, int* active, void* data);
+int drun_on_key(xkb_keysym_t* key, int* active, void* data);
+void drun_destroy(void* data);
 
 #endif

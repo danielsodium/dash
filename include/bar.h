@@ -19,9 +19,9 @@ typedef struct {
 
 } BarData;
 
-void bar_init(BarData* d, cairo_t* cairo);
-void bar_step(int* active, void* d);
-int bar_draw(cairo_t* cairo, int* active, void* data);
-void bar_destroy(BarData* d);
+void bar_init(cairo_t* cairo, void* data);
+int bar_step(int* active, void* data);
+void bar_draw(cairo_t* cairo, int* active, void* data);
+void bar_destroy(void* data);
 
 #endif

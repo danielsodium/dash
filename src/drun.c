@@ -87,7 +87,8 @@ static void drun_find(DRunData* d) {
     }
 }
 
-void drun_init(DRunData* d, cairo_t* cairo) {
+void drun_init(cairo_t* cairo, void* data) {
+    DRunData* d = data;
     d->input[0] = '\0';
     d->layout = pango_cairo_create_layout(cairo);
     d->font = pango_font_description_from_string("JetBrainsMono Nerd Font 18");
@@ -97,10 +98,9 @@ void drun_init(DRunData* d, cairo_t* cairo) {
     drun_get_bin(d);
 }
 
-int drun_draw(cairo_t* cairo, int* active, void* data) {
+void drun_draw(cairo_t* cairo, int* active, void* data) {
     (void)active;
     DRunData* d = data;
-    if (!d->update) return 0;
 
     // Clear background
     cairo_set_source_rgba(cairo, 0.0, 0.0, 0.0, 0.0);
@@ -114,16 +114,14 @@ int drun_draw(cairo_t* cairo, int* active, void* data) {
     pango_layout_set_text(d->layout, str, -1);
     pango_cairo_update_layout(cairo, d->layout);
     pango_cairo_show_layout(cairo, d->layout);
-
-    return 1;
 }
 
-void drun_on_key(xkb_keysym_t* key, int* active, void* data) {
+int drun_on_key(xkb_keysym_t* key, int* active, void* data) {
     DRunData* d = data;
 
     if (*key == XKB_KEY_Escape) {
         *active = 0;
-        return;
+        return 0;
     }
     if (*key == XKB_KEY_BackSpace) {
         size_t len = strlen(d->input);
@@ -131,7 +129,7 @@ void drun_on_key(xkb_keysym_t* key, int* active, void* data) {
             d->input[len - 1] = '\0';
             d->update = 1;
         }
-        return;
+        return 1;
     }
 
     if (*key == XKB_KEY_Return) {
@@ -140,7 +138,7 @@ void drun_on_key(xkb_keysym_t* key, int* active, void* data) {
             sprintf(command, "%s &", d->options[0]);
             system(command);
             *active = 0;
-            return;
+            return 0;
         }
     }
 
@@ -151,9 +149,11 @@ void drun_on_key(xkb_keysym_t* key, int* active, void* data) {
         drun_find(d);
         d->update = 1;
     }
+    return 1;
 }
 
-void drun_destroy(DRunData* d) {
+void drun_destroy(void* data) {
+    DRunData* d = data;
     size_t i;
 
     g_object_unref(d->layout);
