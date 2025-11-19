@@ -70,5 +70,6 @@ void window_attach_step(Window* w, int interval, int(*step_func)(int*, void*));
 void window_attach_keyboard_listener(Window* w, int(*on_key_func)(xkb_keysym_t*, int*, void*));
 
 void window_run(Window* w);
+void window_draw(Window* w);
 
 #endif

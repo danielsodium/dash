@@ -13,6 +13,13 @@
 #include "widgets.h"
 #include "keyboard.h"
 
+
+#define EVENT_CALLBACK_FUNCTION(event_name, event_function, data_type)        \
+    void event_name(Window *w, data_type data) {                       \
+        if (event_function(data, &w->active, w->data)) {       \
+            window_draw(w);                                       \
+        }                                                          \
+    }
 // Callback functions
 static void _registry_global(void *data, struct wl_registry *registry, 
                              uint32_t name, const char *interface, uint32_t version);
@@ -22,7 +29,6 @@ static void _layer_surface_closed(void *data, struct zwlr_layer_surface_v1 *surf
 static int _timer_create(long interval_ms);
 static void _window_commit(Window* w);
 static void _window_loop(Window* w);
-static void _window_draw(Window* w);
 static void _window_destroy(Window* w);
 
 Window* window_create(int width, int height, int anchor, int layer) {
@@ -75,12 +81,16 @@ Window* window_create(int width, int height, int anchor, int layer) {
     return w;
 }
 
+EVENT_CALLBACK_FUNCTION(on_key_callback, w->on_key, xkb_keysym_t*)
 void window_attach_keyboard_listener(Window* w, int(*on_key_func)(xkb_keysym_t*, int*, void*)) {
     zwlr_layer_surface_v1_set_keyboard_interactivity(w->layer_surface,
             ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_ON_DEMAND);
-    keyboard_create(w->seat);
-    w->keyboard_attached = 1;
+
+    printf("HERE\n");
     w->on_key = on_key_func;
+    w->keyboard = keyboard_create(w, w->seat);
+    keyboard_attach_on_key(w->keyboard, on_key_callback);
+    w->keyboard_attached = 1;
     wl_display_roundtrip(w->display);
 }
 
@@ -118,12 +128,12 @@ void window_run(Window* w) {
     if (w->init_attached)
         w->init(w->canvas->cairo, w->data);
     if (w->draw_attached)
-        _window_draw(w);
+        window_draw(w);
     _window_loop(w);
     _window_destroy(w);
 }
 
-static void _window_draw(Window* w) {
+void window_draw(Window* w) {
     if (!w->draw_attached) return;
     w->draw(w->canvas->cairo, &w->active, w->data);
     wl_surface_attach(w->surface, w->canvas->buffer, 0, 0);
@@ -208,7 +218,7 @@ static void _window_loop(Window* w) {
                 uint64_t exp;
                 read(w->step_fd, &exp, sizeof(exp));
                 int should_draw = w->step(&w->active, w->data);
-                if (should_draw) _window_draw(w);
+                if (should_draw) window_draw(w);
             }
         }
     }

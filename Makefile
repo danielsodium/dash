@@ -1,6 +1,6 @@
 # Directory structure
 SRC_DIR = src
-OBJ_DIR = build
+OBJ_DIR = build/bar
 BIN_DIR = bin
 GEN_DIR = gen
 INCLUDE_DIR = include
@@ -16,7 +16,7 @@ PROTO_DIR = /usr/share/wayland-protocols
 WLR_PROTO = wlr-layer-shell-unstable-v1.xml
 
 # Target and sources
-TARGET = dash
+TARGET = bar
 DRUN_TARGET = drun
 SRC_FILES = main.c canvas.c window.c keyboard.c drun.c bar.c status.c widgets.c
 PROTO_FILES = wlr-layer-shell-unstable-v1-client-protocol.c xdg-shell-client-protocol.c
@@ -27,7 +27,7 @@ PROTO_OBJECTS = $(patsubst %.c,$(OBJ_DIR)/%.o,$(PROTO_FILES))
 OBJECTS = $(SRC_OBJECTS) $(PROTO_OBJECTS)
 
 # DRUN object files (separate directory to avoid conflicts)
-DRUN_OBJ_DIR = obj_drun
+DRUN_OBJ_DIR = build/drun
 DRUN_SRC_OBJECTS = $(patsubst %.c,$(DRUN_OBJ_DIR)/%.o,$(SRC_FILES))
 DRUN_PROTO_OBJECTS = $(patsubst %.c,$(DRUN_OBJ_DIR)/%.o,$(PROTO_FILES))
 DRUN_OBJECTS = $(DRUN_SRC_OBJECTS) $(DRUN_PROTO_OBJECTS)

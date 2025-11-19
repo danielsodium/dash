@@ -3,7 +3,7 @@
 Shell for Cairo + Pango on Wayland in C to create desktop widgets. A major work in progress.
 
 ## TODO
- - Fix keyboard inputs
+ - Allow attachment of a draw timeout
  - Fix DRun input box
  - Fix DRun list format
  - Clean up window functions
