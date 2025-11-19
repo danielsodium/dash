@@ -5,6 +5,8 @@
 #include <xkbcommon/xkbcommon.h>
 #include <pango/pangocairo.h>
 
+#include "keyboard.h"
+
 #define WIDTH_CHARS 12
 
 typedef struct {
@@ -26,7 +28,7 @@ typedef struct {
 
 void drun_init(cairo_t* cairo, void* data);
 void drun_draw(cairo_t* cairo, int* active, void* data);
-int drun_on_key(xkb_keysym_t* key, int* active, void* data);
+int drun_on_key(KeyboardData* event_data, int* active, void* data);
 void drun_destroy(void* data);
 
 #endif

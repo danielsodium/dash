@@ -116,8 +116,9 @@ void drun_draw(cairo_t* cairo, int* active, void* data) {
     pango_cairo_show_layout(cairo, d->layout);
 }
 
-int drun_on_key(xkb_keysym_t* key, int* active, void* data) {
+int drun_on_key(KeyboardData* event_data, int* active, void* data) {
     DRunData* d = data;
+    xkb_keysym_t* key = event_data->key;
 
     if (*key == XKB_KEY_Escape) {
         *active = 0;

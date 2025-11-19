@@ -6,6 +6,20 @@
 
 #include "common.h"
 
+enum KeyboardEvent {
+    KEY,
+    KEYMAP,
+    LEAVE,
+    ENTER,
+    MODIFIER,
+    REPEAT
+};
+
+struct KeyboardData {
+    enum KeyboardEvent event;
+    xkb_keysym_t* key;
+};
+
 struct Keyboard {
     struct wl_keyboard* inst;
     struct wl_keyboard_listener* listener;
@@ -16,13 +30,16 @@ struct Keyboard {
     struct wl_seat* seat;
     struct wl_seat_listener* seat_listener;
 
-    void(*on_key)(Window*, xkb_keysym_t*);
-
     Window* w;
+
+    void(*on_event)(Window*, KeyboardData*);
 };
 
 
-Keyboard* keyboard_create(Window* w, struct wl_seat* seat);
-void keyboard_attach_on_key(Keyboard* k, void(*on_key)(Window*, xkb_keysym_t*));
+Keyboard* keyboard_attach(Window* w, 
+                          struct wl_seat* seat, 
+                          void(*on_event)(Window*, KeyboardData*));
+
+void keyboard_destroy(Keyboard* k);
 
 #endif

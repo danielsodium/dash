@@ -12,7 +12,10 @@ static void _on_key(void *data, struct wl_keyboard *kbd, uint32_t serial,
         return;
 
     xkb_keysym_t sym = xkb_state_key_get_one_sym(k->state, key+8);
-    k->on_key(k->w, &sym);
+    KeyboardData* event_data = malloc(sizeof(KeyboardData));
+    *event_data = (KeyboardData){.event = KEY, .key = &sym};
+    k->on_event(k->w, event_data);
+    free(event_data);
 }
 
 static void _on_keymap(void *data, struct wl_keyboard *inst, uint32_t f, int32_t fd, uint32_t s) { 
@@ -65,11 +68,12 @@ static void _seat_name(void *data, struct wl_seat *seat, const char *name) {
     (void)data; (void)seat; (void)name;
 }
 
-Keyboard* keyboard_create(Window* w, struct wl_seat* seat) {
+Keyboard* keyboard_attach(Window* w, struct wl_seat* seat,
+                          void(*on_event)(Window*, KeyboardData*)) {
     Keyboard* k = malloc(sizeof(Keyboard));
-
     k->inst = NULL;
     k->w = w;
+    k->on_event = on_event;
     k->context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
     k->seat = seat;
     k->seat_listener = malloc(sizeof(struct wl_seat_listener));
@@ -89,10 +93,6 @@ Keyboard* keyboard_create(Window* w, struct wl_seat* seat) {
     };
 
     return k;
-}
-
-void keyboard_attach_on_key(Keyboard* k, void(*on_key)(Window*, xkb_keysym_t*)) {
-    k->on_key = on_key;
 }
 
 void keyboard_destroy(Keyboard* k) {

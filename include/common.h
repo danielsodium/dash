@@ -2,6 +2,8 @@
 #define _COMMON_H_
 
 typedef struct Window Window;
+
 typedef struct Keyboard Keyboard;
+typedef struct KeyboardData KeyboardData;
 
 #endif

@@ -53,7 +53,7 @@ struct Window {
     void (*destroy)(void*);
 
     int (*step)(int*, void*);
-    int (*on_key)(xkb_keysym_t*, int*, void*);
+    int (*on_keyboard)(KeyboardData*, int*, void*);
 
     void* data;
 
@@ -67,7 +67,7 @@ void window_attach_destroy(Window* w, void(*destroy)(void*));
 
 void window_attach_draw(Window* w, void(*draw_func)(cairo_t*, int*, void*));
 void window_attach_step(Window* w, int interval, int(*step_func)(int*, void*));
-void window_attach_keyboard_listener(Window* w, int(*on_key_func)(xkb_keysym_t*, int*, void*));
+void window_attach_keyboard_listener(Window* w, int(*on_keyboard)(KeyboardData*, int*, void*));
 
 void window_run(Window* w);
 void window_draw(Window* w);

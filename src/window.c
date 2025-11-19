@@ -13,13 +13,19 @@
 #include "widgets.h"
 #include "keyboard.h"
 
-
-#define EVENT_CALLBACK_FUNCTION(event_name, event_function, data_type)        \
-    void event_name(Window *w, data_type data) {                       \
-        if (event_function(data, &w->active, w->data)) {       \
-            window_draw(w);                                       \
-        }                                                          \
+#define CREATE_SYSTEM_EVENT(event_name, event_data) \
+    void on_##event_name##_callback(Window* w, event_data* data) { \
+        if (w->on_##event_name(data, &w->active, w->data)) { \
+            window_draw(w); \
+        } \
+    } \
+    void window_attach_##event_name##_listener(Window* w, \
+        int(*on_##event_name)(event_data*, int*, void*)) { \
+        w->event_name##_attached = 1; \
+        w->on_##event_name = on_##event_name; \
+        w->event_name = event_name##_attach(w, w->seat, on_##event_name##_callback); \
     }
+
 // Callback functions
 static void _registry_global(void *data, struct wl_registry *registry, 
                              uint32_t name, const char *interface, uint32_t version);
@@ -73,6 +79,8 @@ Window* window_create(int width, int height, int anchor, int layer) {
         zwlr_layer_surface_v1_set_exclusive_zone(w->layer_surface, -1);
     zwlr_layer_surface_v1_set_keyboard_interactivity(w->layer_surface,
             ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_NONE);
+    zwlr_layer_surface_v1_set_keyboard_interactivity(w->layer_surface,
+            ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_ON_DEMAND);
     *(w->layer_surface_listener) = (struct zwlr_layer_surface_v1_listener) {
         .configure = _layer_surface_configure, .closed = _layer_surface_closed
     };
@@ -81,18 +89,7 @@ Window* window_create(int width, int height, int anchor, int layer) {
     return w;
 }
 
-EVENT_CALLBACK_FUNCTION(on_key_callback, w->on_key, xkb_keysym_t*)
-void window_attach_keyboard_listener(Window* w, int(*on_key_func)(xkb_keysym_t*, int*, void*)) {
-    zwlr_layer_surface_v1_set_keyboard_interactivity(w->layer_surface,
-            ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_ON_DEMAND);
-
-    printf("HERE\n");
-    w->on_key = on_key_func;
-    w->keyboard = keyboard_create(w, w->seat);
-    keyboard_attach_on_key(w->keyboard, on_key_callback);
-    w->keyboard_attached = 1;
-    wl_display_roundtrip(w->display);
-}
+CREATE_SYSTEM_EVENT(keyboard, KeyboardData)
 
 void window_attach_step(Window* w, int interval, int(*step_func)(int*, void*)) {
     w->step_attached = 1;
