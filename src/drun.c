@@ -15,6 +15,8 @@ static void drun_str(char* str, DRunData* d) {
     list[0] = '\0';
     for (i = 0; i < d->options_size; i++) {
         snprintf(buffer, WIDTH_CHARS + 1, (i == 0) ? "> %s\n" : "  %s\n", d->options[i]);
+        buffer[WIDTH_CHARS-1] = '\n';
+        buffer[WIDTH_CHARS] = '\0';
         strcat(list, buffer);
     }
 
@@ -77,12 +79,16 @@ static void drun_get_bin(DRunData *d) {
 
 static void drun_find(DRunData* d) {
     size_t i;
+    if (strlen(d->input) == 0) {
+        d->options_size = 0;
+        return;
+    }
 
     d->options_size = 0;
     for (i = 0; i < d->bins_size; i++) {
         if (strstr(d->bins[i], d->input)) {
             strcpy(d->options[d->options_size++], d->bins[i]);
-            if (d->options_size >= 5) return;
+            if (d->options_size >= 5) break;
         }
     }
 }
@@ -132,6 +138,7 @@ int drun_on_key(KeyboardData* event_data, int* active, void* data) {
         size_t len = strlen(d->input);
         if (len > 0) {
             d->input[len - 1] = '\0';
+            drun_find(d);
             d->update = 1;
         }
         return 1;
