@@ -13,6 +13,14 @@
 #include "widgets.h"
 #include "keyboard.h"
 
+#define CREATE_EPOLL(fd_name)\
+    ev.events = EPOLLIN;\
+    ev.data.fd = w->fd_name;\
+    if (epoll_ctl(w->epoll_fd, EPOLL_CTL_ADD, w->fd_name, &ev) == -1) {\
+        perror("Failed to epoll fd_name");\
+        return;\
+    }
+
 #define CREATE_SYSTEM_EVENT(event_name, event_data) \
     void on_##event_name##_callback(Window* w, event_data* data) { \
         if (w->on_##event_name(data, &w->active, w->data)) { \
@@ -54,6 +62,10 @@ Window* window_create(int width, int height, int anchor, int layer) {
     w->shm = NULL; 
     w->layer_shell = NULL;
     w->keyboard_attached = 0;
+    w->epoll_fd = -1;
+    w->display_fd = -1;
+    w->step_fd = -1;
+    w->repeat_fd = -1;
 
     // Setup registry
     w->registry = wl_display_get_registry(w->display);
@@ -151,15 +163,9 @@ static void _window_commit(Window* w) {
         perror("Failed to create epoll");
         return;
     }
-
-    w->display_fd = wl_display_get_fd(w->display);
     struct epoll_event ev = {0};
-    ev.events = EPOLLIN;
-    ev.data.fd = w->display_fd;
-    if (epoll_ctl(w->epoll_fd, EPOLL_CTL_ADD, w->display_fd, &ev) == -1) {
-        perror("Failed to epoll wayland display");
-        return;
-    }
+    w->display_fd = wl_display_get_fd(w->display);
+    CREATE_EPOLL(display_fd);
 
     if (w->step_attached) {
         w->step_fd = _timer_create(w->step_interval);
@@ -167,13 +173,15 @@ static void _window_commit(Window* w) {
             perror("Failed to create step timer");
             return;
         }
-        ev.events = EPOLLIN;
-        ev.data.fd = w->step_fd;
-        if (epoll_ctl(w->epoll_fd, EPOLL_CTL_ADD, w->step_fd, &ev) == -1) {
-            perror("Failed to epoll step");
-            return;
-        }
+        CREATE_EPOLL(step_fd);
     }
+    
+    if (w->keyboard_attached) {
+        w->repeat_fd = w->keyboard->repeat_fd;
+        CREATE_EPOLL(repeat_fd);
+    }
+
+
 }
 
 static void _window_loop(Window* w) {
@@ -210,12 +218,23 @@ static void _window_loop(Window* w) {
             wl_display_cancel_read(w->display);
         }
 
+        uint64_t exp;
         for (int i = 0; i < nfds; i++) {
             if (events[i].data.fd == w->step_fd) {
-                uint64_t exp;
                 read(w->step_fd, &exp, sizeof(exp));
                 int should_draw = w->step(&w->active, w->data);
                 if (should_draw) window_draw(w);
+            } else if (events[i].data.fd == w->repeat_fd) {
+                read(w->keyboard->repeat_fd, &exp, sizeof(exp));
+                if (w->keyboard->repeating) {
+                    KeyboardData event_data = {
+                        .event = KEYBOARD_EVENT_KEY_REPEAT,
+                        .key = &w->keyboard->last_pressed
+                    };
+                    if (w->on_keyboard(&event_data, &w->active, w->data)) {
+                        window_draw(w);
+                    }
+                }
             }
         }
     }
@@ -225,13 +244,15 @@ static void _window_destroy(Window* w) {
     if (w->destroy_attached) 
         w->destroy(w->data);
 
-    if (w->step_attached && w->step_fd != -1)
+    if (w->step_fd != -1)
         close(w->step_fd);
     if (w->epoll_fd != -1)
         close(w->epoll_fd);
-    if (w->keyboard_attached) {
-        // TODO:  IMPLEMENT
-    }
+    if (w->repeat_fd != -1)
+        close(w->repeat_fd);
+    if (w->keyboard_attached)
+        keyboard_destroy(w->keyboard);
+
     canvas_destroy(w->canvas);
     zwlr_layer_surface_v1_destroy(w->layer_surface);
     wl_surface_destroy(w->surface);

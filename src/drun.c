@@ -117,6 +117,10 @@ void drun_draw(cairo_t* cairo, int* active, void* data) {
 }
 
 int drun_on_key(KeyboardData* event_data, int* active, void* data) {
+    if (event_data->event != KEYBOARD_EVENT_KEY_PRESS && 
+        event_data->event != KEYBOARD_EVENT_KEY_REPEAT) 
+        return 0;
+
     DRunData* d = data;
     xkb_keysym_t* key = event_data->key;
 

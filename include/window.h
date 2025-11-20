@@ -30,6 +30,7 @@ struct Window {
     int epoll_fd;
     int display_fd;
     int step_fd;
+    int repeat_fd;
 
     struct wl_display* display;
     struct wl_registry* registry;

@@ -2,18 +2,40 @@
 
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/timerfd.h>
 #include <sys/mman.h>
 
 static void _on_key(void *data, struct wl_keyboard *kbd, uint32_t serial,
                        uint32_t time, uint32_t key, uint32_t state) {
     (void)data; (void)kbd; (void)serial; (void)time;
     Keyboard* k = data;
-    if (state != WL_KEYBOARD_KEY_STATE_PRESSED)
-        return;
 
     xkb_keysym_t sym = xkb_state_key_get_one_sym(k->state, key+8);
     KeyboardData* event_data = malloc(sizeof(KeyboardData));
-    *event_data = (KeyboardData){.event = KEY, .key = &sym};
+    // State lines up with the enum for key_state and KeyboardEvent
+    // I don't know if this is smart or idiotic
+    *event_data = (KeyboardData){
+        .event = state, 
+        .key = &sym
+    };
+
+    // Ready for repeat if pressed down
+    if (k->rate != -1 && k->delay != -1) {
+        struct itimerspec spec = {0};
+        if (state == WL_KEYBOARD_KEY_STATE_PRESSED) {
+            k->last_pressed = sym;
+            k->repeating = 1;
+            spec.it_value.tv_sec = k->delay / 1000;
+            spec.it_value.tv_nsec = (k->delay % 1000) * 1000000;
+            long interval_ms = 1000 / k->rate;
+            spec.it_interval.tv_sec = interval_ms / 1000;
+            spec.it_interval.tv_nsec = (interval_ms % 1000) * 1000000;
+        } else {
+            k->repeating = 0;
+        }
+        timerfd_settime(k->repeat_fd, 0, &spec, NULL);
+    }
+
     k->on_event(k->w, event_data);
     free(event_data);
 }
@@ -51,8 +73,11 @@ static void _on_leave(void *d, struct wl_keyboard *k, uint32_t s, struct wl_surf
 static void _on_mods(void *d, struct wl_keyboard *k, uint32_t s, uint32_t dep, uint32_t lat, uint32_t lock, uint32_t grp) {
     (void)d; (void)k; (void)s; (void)dep; (void)lat; (void)lock; (void)grp;
 }
-static void _on_repeat(void *d, struct wl_keyboard *k, int32_t rate, int32_t delay) {
-    (void)d; (void)k; (void)rate; (void)delay;
+static void _on_repeat(void *d, struct wl_keyboard *inst, int32_t rate, int32_t delay) {
+    (void)inst;
+    Keyboard* k = d;
+    k->rate = rate;
+    k->delay = delay;
 }
 
 static void _handle_keyboard(void *data, struct wl_seat *seat, uint32_t caps) {
@@ -71,18 +96,23 @@ static void _seat_name(void *data, struct wl_seat *seat, const char *name) {
 Keyboard* keyboard_attach(Window* w, struct wl_seat* seat,
                           void(*on_event)(Window*, KeyboardData*)) {
     Keyboard* k = malloc(sizeof(Keyboard));
-    k->inst = NULL;
-    k->w = w;
-    k->on_event = on_event;
-    k->context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
-    k->seat = seat;
-    k->seat_listener = malloc(sizeof(struct wl_seat_listener));
+    *k = (Keyboard) {
+        .inst = NULL,
+        .w = w,
+        .on_event = on_event,
+        .context = xkb_context_new(XKB_CONTEXT_NO_FLAGS),
+        .seat = seat,
+        .seat_listener = malloc(sizeof(struct wl_seat_listener)),
+        .listener = malloc(sizeof(struct wl_keyboard_listener)),
+        .rate = -1,
+        .delay = -1,
+        .repeat_fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK),
+        .repeating = 0
+    };
+
     *(k->seat_listener) = (struct wl_seat_listener){
         .capabilities = _handle_keyboard, .name = _seat_name
     };
-    wl_seat_add_listener(k->seat, k->seat_listener, k);
-
-    k->listener = malloc(sizeof(struct wl_keyboard_listener));
     *(k->listener) = (struct wl_keyboard_listener){
         .keymap = _on_keymap,
         .leave =  _on_leave,
@@ -91,6 +121,7 @@ Keyboard* keyboard_attach(Window* w, struct wl_seat* seat,
         .modifiers = _on_mods,
         .repeat_info = _on_repeat
     };
+    wl_seat_add_listener(k->seat, k->seat_listener, k);
 
     return k;
 }
@@ -99,7 +130,7 @@ void keyboard_destroy(Keyboard* k) {
     xkb_state_unref(k->state);
     xkb_keymap_unref(k->keymap);
     xkb_context_unref(k->context);
-    wl_keyboard_destroy(k->inst);
+    wl_keyboard_release(k->inst);
     free(k->listener);
     free(k->seat_listener);
 }

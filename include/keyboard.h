@@ -6,20 +6,6 @@
 
 #include "common.h"
 
-enum KeyboardEvent {
-    KEY,
-    KEYMAP,
-    LEAVE,
-    ENTER,
-    MODIFIER,
-    REPEAT
-};
-
-struct KeyboardData {
-    enum KeyboardEvent event;
-    xkb_keysym_t* key;
-};
-
 struct Keyboard {
     struct wl_keyboard* inst;
     struct wl_keyboard_listener* listener;
@@ -29,6 +15,12 @@ struct Keyboard {
 
     struct wl_seat* seat;
     struct wl_seat_listener* seat_listener;
+
+    // Repeat keys when pressed
+    int rate, delay;
+    int repeat_fd;
+    xkb_keysym_t last_pressed;
+    int repeating;
 
     Window* w;
 
