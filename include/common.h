@@ -1,7 +1,9 @@
 #ifndef _COMMON_H_
 #define _COMMON_H_
 
+typedef struct Overlord Overlord;
 typedef struct Window Window;
+typedef struct Widget Widget;
 
 // on_key lines up with the enum for key_state and KeyboardEvent
 enum KeyboardEvent {

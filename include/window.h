@@ -15,22 +15,11 @@
 
 struct Window {
 
-    int active;
-    int width;
-    int height;
-
-    int draw_attached;
-    int init_attached;
-    int keyboard_attached;
-    int step_attached;
-    int destroy_attached;
-
-    long step_interval;
-
     int epoll_fd;
     int display_fd;
     int step_fd;
     int repeat_fd;
+    long step_interval;
 
     struct wl_display* display;
     struct wl_registry* registry;
@@ -43,21 +32,11 @@ struct Window {
     struct wl_seat* seat;
 
     struct wl_surface* surface;
-    struct zwlr_layer_surface_v1 *layer_surface;
+    struct zwlr_layer_surface_v1* layer_surface;
     struct zwlr_layer_surface_v1_listener* layer_surface_listener;
 
-    Canvas* canvas;
     Keyboard* keyboard;
-
-    void (*init)(cairo_t*, void*);
-    void (*draw)(cairo_t*, int*, void*);
-    void (*destroy)(void*);
-
-    int (*step)(int*, void*);
-    int (*on_keyboard)(KeyboardData*, int*, void*);
-
     void* data;
-
 };
 
 Window* window_create(int width, int height, int anchor, int layer);
