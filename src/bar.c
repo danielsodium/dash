@@ -44,7 +44,6 @@ void bar_draw(cairo_t* cairo, int* active, void* data) {
     pango_layout_get_pixel_size(d->layout, &text_width, &text_height);
     cairo_move_to(cairo, 10, (1440 - text_height - 10));
     pango_cairo_show_layout(cairo, d->layout);
-    *active = 0;
 }
 
 void bar_destroy(void* data) {
