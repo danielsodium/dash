@@ -8,8 +8,8 @@ INCLUDE_DIR = include
 # Compiler and flags
 CC = gcc
 CFLAGS = -Wall -Wextra -g
-LIBS = $(shell pkg-config --libs wayland-client cairo pango pangocairo gobject-2.0 xkbcommon fontconfig wayland-protocols pangoft2) -lrt
-INCLUDES = $(shell pkg-config --cflags wayland-client cairo pango pangocairo gobject-2.0 xkbcommon fontconfig wayland-protocols pangoft2) -I$(INCLUDE_DIR) -I$(GEN_DIR)
+LIBS = $(shell pkg-config --libs wayland-client cairo pango pangocairo xkbcommon ) -lrt
+INCLUDES = $(shell pkg-config --cflags wayland-client cairo pango pangocairo xkbcommon) -I$(INCLUDE_DIR) -I$(GEN_DIR)
 
 # Protocol directories
 PROTO_DIR = /usr/share/wayland-protocols

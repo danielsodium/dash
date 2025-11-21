@@ -13,6 +13,8 @@ void bar_init(cairo_t* cairo, void* data) {
     d->layout = pango_cairo_create_layout(cairo);
     d->font = pango_font_description_from_string("JetBrainsMono Nerd Font 18");
     pango_layout_set_font_description(d->layout, d->font);
+    d->top_str[0] = '\0';
+    d->bot_str[0] = '\0';
 }
 
 int bar_step(int* active, void* data) {
@@ -42,6 +44,7 @@ void bar_draw(cairo_t* cairo, int* active, void* data) {
     pango_layout_get_pixel_size(d->layout, &text_width, &text_height);
     cairo_move_to(cairo, 10, (1440 - text_height - 10));
     pango_cairo_show_layout(cairo, d->layout);
+    *active = 0;
 }
 
 void bar_destroy(void* data) {

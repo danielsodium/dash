@@ -47,25 +47,44 @@ static void _window_destroy(Window* w);
 
 Window* window_create(int width, int height, int anchor, int layer) {
     Window* w = malloc(sizeof(Window));
-    w->registry_listener = malloc(sizeof(struct wl_registry_listener));
-    w->layer_surface_listener = malloc(sizeof(struct zwlr_layer_surface_v1_listener));
+
+    *w = (Window){
+        .active = 0,
+        .width = width,
+        .height = height,
+        .draw_attached = 0,
+        .init_attached = 0,
+        .keyboard_attached = 0,
+        .step_attached = 0,
+        .destroy_attached = 0,
+        .step_interval = -1,
+        .epoll_fd = -1,
+        .display_fd = -1,
+        .step_fd = -1,
+        .repeat_fd = -1,
+        .display = NULL,
+        .registry = NULL,
+        .registry_listener = malloc(sizeof(struct wl_registry_listener)),
+        .compositor = NULL,
+        .shm = NULL,
+        .layer_shell = NULL,
+        .output = NULL,
+        .seat = NULL,
+        .surface = NULL,
+        .layer_surface = NULL,
+        .layer_surface_listener = malloc(sizeof(struct zwlr_layer_surface_v1_listener)),
+        .canvas = NULL,
+        .keyboard = NULL,
+        .data = NULL,
+
+    };
 
     w->display = wl_display_connect(NULL);
     if (!w->display) {
         perror("Failed to connect to display");
+        free(w);
         return NULL;
     }
-    
-    // Initalize
-    w->output = NULL; 
-    w->compositor = NULL;
-    w->shm = NULL; 
-    w->layer_shell = NULL;
-    w->keyboard_attached = 0;
-    w->epoll_fd = -1;
-    w->display_fd = -1;
-    w->step_fd = -1;
-    w->repeat_fd = -1;
 
     // Setup registry
     w->registry = wl_display_get_registry(w->display);
@@ -79,11 +98,11 @@ Window* window_create(int width, int height, int anchor, int layer) {
         return NULL;
     }
 
-    // Setup surface
+    // Setup Surface
     w->surface = wl_compositor_create_surface(w->compositor);
     w->layer_surface = zwlr_layer_shell_v1_get_layer_surface(
         w->layer_shell, w->surface, w->output, layer, "window");
-    zwlr_layer_surface_v1_set_size(w->layer_surface, w->width=width, w->height=height);
+    zwlr_layer_surface_v1_set_size(w->layer_surface, width, height);
     zwlr_layer_surface_v1_set_anchor(w->layer_surface, anchor);
     if (layer != ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY)
         zwlr_layer_surface_v1_set_exclusive_zone(w->layer_surface, width);
@@ -123,10 +142,6 @@ void window_attach_init(Window* w, void (*init)(cairo_t*, void*)) {
     w->init_attached = 1;
     w->init = init;
 }
-void window_handle_events(Window* w) {
-    wl_display_roundtrip(w->display);
-    wl_display_dispatch_pending(w->display);
-}
 
 void window_attach_data(Window* w, void* data) {
     w->data = data;
@@ -164,6 +179,8 @@ static void _window_commit(Window* w) {
         return;
     }
     struct epoll_event ev = {0};
+
+    // EVENTS
     w->display_fd = wl_display_get_fd(w->display);
     CREATE_EPOLL(display_fd);
 
@@ -175,13 +192,10 @@ static void _window_commit(Window* w) {
         }
         CREATE_EPOLL(step_fd);
     }
-    
     if (w->keyboard_attached) {
         w->repeat_fd = w->keyboard->repeat_fd;
         CREATE_EPOLL(repeat_fd);
     }
-
-
 }
 
 static void _window_loop(Window* w) {
