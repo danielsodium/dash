@@ -1,5 +1,5 @@
-#ifndef _WINDOW_H_
-#define _WINDOW_H_
+#ifndef _OVERLORD_H_
+#define _OVERLORD_H_
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,8 +13,11 @@
 #include "canvas.h"
 #include "common.h"
 
-struct Window {
+struct Overlord {
+    int active;
 
+    // idk why its 32
+    struct epoll_event events[32];
     int epoll_fd;
     int display_fd;
     int step_fd;
@@ -23,7 +26,7 @@ struct Window {
 
     struct wl_display* display;
     struct wl_registry* registry;
-    struct wl_registry_listener* registry_listener;
+    struct wl_registry_listener registry_listener;
 
     struct wl_compositor* compositor;
     struct wl_shm* shm;
@@ -31,25 +34,12 @@ struct Window {
     struct wl_output* output;
     struct wl_seat* seat;
 
-    struct wl_surface* surface;
-    struct zwlr_layer_surface_v1* layer_surface;
-    struct zwlr_layer_surface_v1_listener* layer_surface_listener;
-
     Keyboard* keyboard;
-    void* data;
 };
 
-Window* window_create(int width, int height, int anchor, int layer);
-
-void window_attach_init(Window* w, void (*init)(cairo_t*, void*));
-void window_attach_data(Window *w, void* data);
-void window_attach_destroy(Window* w, void(*destroy)(void*));
-
-void window_attach_draw(Window* w, void(*draw_func)(cairo_t*, int*, void*));
-void window_attach_step(Window* w, int interval, int(*step_func)(int*, void*));
-void window_attach_keyboard_listener(Window* w, int(*on_keyboard)(KeyboardData*, int*, void*));
-
-void window_run(Window* w);
-void window_draw(Window* w);
+// Scan to see if any other overlords are active
+// return true if found
+int overlord_scan();
+int overlord_run();
 
 #endif
