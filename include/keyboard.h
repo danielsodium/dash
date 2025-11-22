@@ -22,16 +22,17 @@ struct Keyboard {
     xkb_keysym_t last_pressed;
     int repeating;
 
-    Window* w;
+    Overlord* o;
 
-    void(*on_event)(Window*, KeyboardData*);
+    void(*on_event)(Overlord*, KeyboardData*);
 };
 
-
-Keyboard* keyboard_attach(Window* w, 
+Keyboard* keyboard_attach(Overlord* o, 
                           struct wl_seat* seat, 
-                          void(*on_event)(Window*, KeyboardData*));
+                          void(*on_event)(Overlord*, KeyboardData*));
 
 void keyboard_destroy(Keyboard* k);
+
+void keyboard_repeat_key(Keyboard* k);
 
 #endif

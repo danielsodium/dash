@@ -36,7 +36,7 @@ static void _on_key(void *data, struct wl_keyboard *kbd, uint32_t serial,
         timerfd_settime(k->repeat_fd, 0, &spec, NULL);
     }
 
-    k->on_event(k->w, event_data);
+    k->on_event(k->o, event_data);
     free(event_data);
 }
 
@@ -93,12 +93,12 @@ static void _seat_name(void *data, struct wl_seat *seat, const char *name) {
     (void)data; (void)seat; (void)name;
 }
 
-Keyboard* keyboard_attach(Window* w, struct wl_seat* seat,
-                          void(*on_event)(Window*, KeyboardData*)) {
+Keyboard* keyboard_attach(Overlord* o, struct wl_seat* seat,
+                          void(*on_event)(Overlord*, KeyboardData*)) {
     Keyboard* k = malloc(sizeof(Keyboard));
     *k = (Keyboard) {
         .inst = NULL,
-        .w = w,
+        .o = o,
         .on_event = on_event,
         .context = xkb_context_new(XKB_CONTEXT_NO_FLAGS),
         .seat = seat,

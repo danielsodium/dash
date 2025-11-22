@@ -30,9 +30,12 @@ Widget* widget_create(size_t width, size_t height, int anchor, int layer);
 
 void widget_attach_data(Widget* w, void* data);
 void widget_attach_destroy(Widget* w, void(*destroy)(void*));
+void widget_attach_draw(Widget*w, void (*draw)(cairo_t*, int*, void*));
 
-int widget_attach_init(Widget* w, void(*init)(cairo*, void*));
+int widget_attach_init(Widget* w, void(*init)(cairo_t*, void*));
 int widget_attach_step(Widget* w, int(*step)(int*, void*));
-void window_attach_keyboard_listener(Widget* w, int(*on_keyboard)(KeyboardData*, int*, void*));
+void widget_attach_keyboard_listener(Widget* w, int(*on_keyboard)(KeyboardData*, int*, void*));
+
+int widget_run_step(Widget* w);
 
 #endif

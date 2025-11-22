@@ -4,6 +4,7 @@ Shell for Cairo + Pango on Wayland in C to create desktop widgets. A major work 
 
 ## TODO
  - Allow attachment of a draw timeout
+ - Fix multiple monitors
  - Fix DRun list format
  - Clean up window functions
  - Add in singleton checking and IPC

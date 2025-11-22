@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/epoll.h>
 
 #include <cairo/cairo.h>
 #include <wayland-client.h>
@@ -35,6 +36,8 @@ struct Overlord {
     struct wl_seat* seat;
 
     Keyboard* keyboard;
+
+    Widget* widget;
 };
 
 // Scan to see if any other overlords are active
