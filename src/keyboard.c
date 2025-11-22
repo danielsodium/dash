@@ -36,7 +36,7 @@ static void _on_key(void *data, struct wl_keyboard *kbd, uint32_t serial,
         timerfd_settime(k->repeat_fd, 0, &spec, NULL);
     }
 
-    k->on_event(k->o, event_data);
+    k->on_event(event_data);
     free(event_data);
 }
 
@@ -93,12 +93,11 @@ static void _seat_name(void *data, struct wl_seat *seat, const char *name) {
     (void)data; (void)seat; (void)name;
 }
 
-Keyboard* keyboard_attach(Overlord* o, struct wl_seat* seat,
-                          void(*on_event)(Overlord*, KeyboardData*)) {
+Keyboard* keyboard_attach(struct wl_seat* seat,
+                          void(*on_event)(KeyboardData*)) {
     Keyboard* k = malloc(sizeof(Keyboard));
     *k = (Keyboard) {
         .inst = NULL,
-        .o = o,
         .on_event = on_event,
         .context = xkb_context_new(XKB_CONTEXT_NO_FLAGS),
         .seat = seat,
@@ -124,6 +123,18 @@ Keyboard* keyboard_attach(Overlord* o, struct wl_seat* seat,
     wl_seat_add_listener(k->seat, k->seat_listener, k);
 
     return k;
+}
+
+
+void keyboard_repeat_key(Keyboard* k) {
+    if (!k->repeating) return;
+    KeyboardData* event_data = malloc(sizeof(KeyboardData));
+    *event_data = (KeyboardData) {
+        .event = KEYBOARD_EVENT_KEY_REPEAT,
+        .key = &k->last_pressed
+    };
+    k->on_event(event_data);
+    free(event_data);
 }
 
 void keyboard_destroy(Keyboard* k) {

@@ -23,6 +23,7 @@ struct Overlord {
     int display_fd;
     int step_fd;
     int repeat_fd;
+    int ipc_fd;
     long step_interval;
 
     struct wl_display* display;
@@ -35,14 +36,18 @@ struct Overlord {
     struct wl_output* output;
     struct wl_seat* seat;
 
+    // One for each layer
+    struct wl_surface** surfaces;
+    struct zwlr_layer_surface_v1** layer_surfaces;
+    int surfaces_size;
+    int surfaces_capacity;
+
     Keyboard* keyboard;
 
     Widget* widget;
 };
 
-// Scan to see if any other overlords are active
-// return true if found
-int overlord_scan();
-int overlord_run();
+int overlord_run(int sock);
+void overlord_toggle_widget();
 
 #endif

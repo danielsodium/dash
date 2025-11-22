@@ -104,7 +104,7 @@ void drun_init(cairo_t* cairo, void* data) {
     drun_get_bin(d);
 }
 
-void drun_draw(cairo_t* cairo, int* active, void* data) {
+int drun_draw(cairo_t* cairo, int* active, void* data) {
     (void)active;
     DRunData* d = data;
 
@@ -120,6 +120,7 @@ void drun_draw(cairo_t* cairo, int* active, void* data) {
     pango_layout_set_text(d->layout, str, -1);
     pango_cairo_update_layout(cairo, d->layout);
     pango_cairo_show_layout(cairo, d->layout);
+    return 0;
 }
 
 int drun_on_key(KeyboardData* event_data, int* active, void* data) {

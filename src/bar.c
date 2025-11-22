@@ -6,7 +6,24 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
-#include "widgets.h"
+#include "status.h"
+
+void system_widget(char* s) {
+    s = print_cpu(s);
+    *(s++) = '\n';
+    s = print_mem(s);
+    *(s++) = '\n';
+    s = print_battery(s);
+    *(s-1) = '\0';
+}
+
+void clock_widget(char* s) {
+    time_t now = time(NULL);
+    struct tm *tm_info = localtime(&now);
+    char buffer[32];
+    strftime(buffer, sizeof(buffer), "%I:%M %p\n%A", tm_info);
+    strcpy(s, buffer);
+}
 
 void bar_init(cairo_t* cairo, void* data) {
     BarData* d = data;

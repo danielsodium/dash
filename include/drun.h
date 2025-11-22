@@ -27,7 +27,7 @@ typedef struct {
 } DRunData;
 
 void drun_init(cairo_t* cairo, void* data);
-void drun_draw(cairo_t* cairo, int* active, void* data);
+int drun_draw(cairo_t* cairo, int* active, void* data);
 int drun_on_key(KeyboardData* event_data, int* active, void* data);
 void drun_destroy(void* data);
 

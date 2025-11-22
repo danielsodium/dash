@@ -18,7 +18,7 @@ WLR_PROTO = wlr-layer-shell-unstable-v1.xml
 # Target and sources
 TARGET = bar
 DRUN_TARGET = drun
-SRC_FILES = main.c canvas.c window.c keyboard.c drun.c bar.c status.c widgets.c
+SRC_FILES = main.c canvas.c window.c keyboard.c drun.c bar.c status.c widget.c
 PROTO_FILES = wlr-layer-shell-unstable-v1-client-protocol.c xdg-shell-client-protocol.c
 
 # Object files from both source and generated directories
@@ -105,6 +105,9 @@ $(DRUN_OBJ_DIR)/wlr-layer-shell-unstable-v1-client-protocol.o: $(WLR_SOURCE) $(W
 # Link the DRUN binary
 $(BIN_DIR)/$(DRUN_TARGET): $(DRUN_OBJECTS) | $(BIN_DIR)
 	$(CC) $(DRUN_OBJECTS) $(LIBS) -o $@
+
+run:
+	./bin/bar
 
 clean:
 	rm -rf $(OBJ_DIR) $(DRUN_OBJ_DIR) $(BIN_DIR) $(GEN_DIR)
