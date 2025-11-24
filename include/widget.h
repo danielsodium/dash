@@ -12,9 +12,8 @@ struct Widget {
     void (*init)(cairo_t*, void*);
 
     int draw_attached;
-    int (*draw)(cairo_t*, int*, void*);
+    int (*draw)(cairo_t*, void*);
     Canvas* canvas;
-    int buffer_attached;
 
     int step_attached;
     int (*step)(int*, void*);
@@ -38,7 +37,7 @@ Widget* widget_create(size_t width, size_t height, struct wl_shm* shm, void(*tog
 
 void widget_attach_data(Widget* w, void* data);
 void widget_attach_destroy(Widget* w, void(*destroy)(void*));
-void widget_attach_draw(Widget* w, int(*draw)(cairo_t*, int*, void*));
+void widget_attach_draw(Widget* w, int(*draw)(cairo_t*, void*));
 void widget_attach_surface(Widget* w, struct wl_surface* surface);
 
 void widget_attach_init(Widget* w, void(*init)(cairo_t*, void*));

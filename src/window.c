@@ -79,8 +79,13 @@ void overlord_toggle_widget() {
     if (o->widget->active) {
         wl_surface_commit(o->widget->surface);
         wl_display_roundtrip(o->display);
-        widget_draw(o->widget);
-        wl_display_flush(o->display);
+    }
+    else {
+        o->keyboard->repeating = false;
+        wl_surface_attach(o->widget->surface, NULL,0,0);
+        wl_surface_damage(o->widget->surface, 0, 0, o->widget->width, o->widget->height);
+        wl_surface_commit(o->widget->surface);
+        wl_display_roundtrip(o->display);
     }
 }
 
@@ -166,17 +171,15 @@ static int _overlord_init(int sock) {
 
 
     // Setup widget
-    int anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP |
-                 ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM | 
-                 ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT;
+    int anchor = 0;
     DRunData* data = malloc(sizeof(DRunData));
-    Widget* w = widget_create(180, 1440, o->shm, overlord_toggle_widget);
+    Widget* w = widget_create(800, 400, o->shm, overlord_toggle_widget);
     widget_attach_draw(w, drun_draw);
     widget_attach_init(w, drun_init);
     widget_attach_data(w, (void*)data);
     widget_attach_destroy(w, drun_destroy);
     widget_attach_keyboard(w, drun_on_key);
-    widget_attach_surface(w, _overlord_create_surface(180, 1440, anchor, ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY));
+    widget_attach_surface(w, _overlord_create_surface(800, 400, anchor, ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY));
     o->widget = w;
 
     // Create event loop
@@ -255,7 +258,6 @@ static int _overlord_loop() {
                 read(o->keyboard->repeat_fd, &exp, sizeof(exp));
                 keyboard_repeat_key(o->keyboard);
             } else if (o->events[i].data.fd == o->ipc_fd) {
-                printf("Recieved IPC signal\n");
                 int client = accept(o->ipc_fd, NULL, NULL);
                 if (client >= 0) {
                     char buf[256];
