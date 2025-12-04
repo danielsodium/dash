@@ -3,7 +3,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "window.h"
+#include "overlord.h"
 
 #define SOCKET_PATH "/tmp/my_widget.sock"
 

@@ -1,4 +1,4 @@
-#include "window.h"
+#include "overlord.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,7 +7,6 @@
 #include <time.h>
 #include <sys/mman.h>
 #include <sys/socket.h>
-#include <errno.h>
 #include <sys/timerfd.h>
 
 #include "widget.h"
@@ -17,38 +16,40 @@
 // SINGLETON OVERLORD
 static Overlord* o = NULL;
 
-#define CREATE_EPOLL(fd_name)\
-    ev.events = EPOLLIN;\
-    ev.data.fd = o->fd_name;\
-    if (epoll_ctl(o->epoll_fd, EPOLL_CTL_ADD, o->fd_name, &ev) == -1) {\
-        perror("Failed to epoll fd_name");\
-        return 1;\
-    }
-
 // Callback functions
 static void _registry_global(void *data, struct wl_registry *registry, 
                              uint32_t name, const char *interface, uint32_t version);
-static int _timer_create(long interval_ms);
-static int _overlord_init(int sock);
-static int _overlord_loop();
-static int _overlord_destroy();
+static int _init(int sock);
+static int _destroy();
 
 int overlord_run(int sock) {
-    o = malloc(sizeof(Overlord));
+    o = calloc(1, sizeof(Overlord));
     if (!o) {
-        perror("Failed to allocated the overlord");
+        perror("Failed to allocate the overlord");
         return 1;
     }
 
-    if (_overlord_init(sock)) {
+    if (_init(sock)) {
         free(o);
         return 1;
     }
-    if (_overlord_loop()) {
-        free(o);
-        return 1;
+
+    // LOOP
+    for (int i = 0; i < o->surfaces_size; i++) {
+        wl_surface_commit(o->surfaces[i]);
     }
-    if (_overlord_destroy()) {
+    wl_display_roundtrip(o->display);
+    widget_init(o->widget);
+
+    while (o->active) {
+        while (wl_display_prepare_read(o->display) != 0) {
+            wl_display_dispatch_pending(o->display);
+        }
+        wl_display_flush(o->display);
+        loop_run(o->loop);
+    }
+
+    if (_destroy()) {
         free(o);
         return 1;
     }
@@ -70,11 +71,11 @@ static void _layer_surface_closed(void *data,
     zwlr_layer_surface_v1_destroy(surface);
 }
 
-void on_keyboard_callback(KeyboardData* d) {
+static void on_keyboard_callback(KeyboardData* d) {
     widget_keyboard(o->widget, d);
 }
 
-void overlord_toggle_widget() {
+static void _toggle_widget() {
     o->widget->active = !o->widget->active;
     if (o->widget->active) {
         wl_surface_commit(o->widget->surface);
@@ -89,7 +90,7 @@ void overlord_toggle_widget() {
     }
 }
 
-static struct wl_surface* _overlord_create_surface(size_t width, size_t height, int anchor, int layer) {
+static struct wl_surface* _create_surface(size_t width, size_t height, int anchor, int layer) {
     struct wl_surface* s = wl_compositor_create_surface(o->compositor);
     struct zwlr_layer_surface_v1* ls = zwlr_layer_shell_v1_get_layer_surface(
         o->layer_shell, s, NULL, layer, "widget");
@@ -125,31 +126,55 @@ static struct wl_surface* _overlord_create_surface(size_t width, size_t height, 
     return s;
 }
 
-static int _overlord_init(int sock) {
+static struct wl_registry_listener _registry_listener = { 
+    .global_remove = NULL, .global = _registry_global
+};
+
+void _display_callback(int fd) {
+    (void)fd;
+    wl_display_read_events(o->display);
+    wl_display_dispatch_pending(o->display);
+}
+
+void _step_callback(int fd) {
+    uint64_t exp;
+    read(fd, &exp, sizeof(exp));
+    widget_step(o->widget);
+    if (!widget_draw(o->widget)) {
+        wl_display_flush(o->display);
+    }
+    wl_display_cancel_read(o->display);
+}
+
+void _repeat_callback(int fd) {
+    uint64_t exp;
+    read(fd, &exp, sizeof(exp));
+    keyboard_repeat_key(o->keyboard);
+    wl_display_cancel_read(o->display);
+}
+
+void _ipc_callback(int fd) {
+    int client = accept(fd, NULL, NULL);
+    if (client >= 0) {
+        char buf[256];
+        int n = read(client, buf, sizeof(buf) - 1);
+        if (n > 0) {
+            buf[n] = '\0';
+            if (strncmp(buf, "TOGGLE", 6) == 0) {
+                _toggle_widget();
+            }
+        }
+        close(client);
+    }
+    wl_display_cancel_read(o->display);
+}
+
+static int _init(int sock) {
     *o = (Overlord){
         .active = 1,
-        .step_interval = -1,
-        .epoll_fd = -1,
-        .display_fd = -1,
-        .step_fd = -1,
-        .repeat_fd = -1,
-        .display = NULL,
-        .registry = NULL,
-        .registry_listener = (struct wl_registry_listener) { 
-            .global_remove = NULL, .global = _registry_global
-        },
-        .compositor = NULL,
-        .shm = NULL,
-        .layer_shell = NULL,
-        .output = NULL,
-        .seat = NULL,
-        .keyboard = NULL,
-        .widget = NULL,
-        .surfaces_size = 0,
         .surfaces_capacity = 1,
         .surfaces = malloc(sizeof(struct wl_surface*)),
         .layer_surfaces = malloc(sizeof(struct zwlr_layer_surface_v1*)),
-        .ipc_fd = sock
     };
 
     o->display = wl_display_connect(NULL);
@@ -160,7 +185,7 @@ static int _overlord_init(int sock) {
 
     // Setup registry
     o->registry = wl_display_get_registry(o->display);
-    wl_registry_add_listener(o->registry, &o->registry_listener, o);
+    wl_registry_add_listener(o->registry, &_registry_listener, o);
     wl_display_roundtrip(o->display);
     if (!o->compositor || !o->shm || !o->layer_shell) {
         perror("Failed to load wayland interface");
@@ -169,121 +194,32 @@ static int _overlord_init(int sock) {
 
     o->keyboard = keyboard_attach(o->seat, on_keyboard_callback);
 
-
-    // Setup widget
+    // Setup widgets
     int anchor = 0;
     DRunData* data = malloc(sizeof(DRunData));
-    Widget* w = widget_create(800, 400, o->shm, overlord_toggle_widget);
+    Widget* w = widget_create(800, 400, o->shm, _toggle_widget);
     widget_attach_draw(w, drun_draw);
     widget_attach_init(w, drun_init);
     widget_attach_data(w, (void*)data);
     widget_attach_destroy(w, drun_destroy);
     widget_attach_keyboard(w, drun_on_key);
-    widget_attach_surface(w, _overlord_create_surface(800, 400, anchor, ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY));
+    widget_attach_surface(w, _create_surface(800, 400, anchor, ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY));
     o->widget = w;
 
     // Create event loop
-    o->epoll_fd = epoll_create1(0);
-    if (o->epoll_fd == -1) {
-        perror("Failed to create epoll");
-        return 1;
-    }
-    struct epoll_event ev = {0};
-
-    // EVENTS
-    o->display_fd = wl_display_get_fd(o->display);
-    CREATE_EPOLL(display_fd);
-
-    o->repeat_fd = o->keyboard->repeat_fd;
-    CREATE_EPOLL(repeat_fd);
-
-    o->step_interval = 17;
-    o->step_fd = _timer_create(o->step_interval);
-    if (o->step_fd == -1) {
-        perror("Failed to create step timer");
-        return 1;
-    }
-    CREATE_EPOLL(step_fd);
-    CREATE_EPOLL(ipc_fd);
+    o->loop = loop_create();
+    loop_add_fd(o->loop, sock, _ipc_callback);
+    loop_add_fd(o->loop, wl_display_get_fd(o->display), _display_callback);
+    loop_add_fd(o->loop, o->keyboard->repeat_fd, _repeat_callback);
+    loop_add_timer(o->loop, 17, _step_callback);
 
     return 0;
 }
 
-static int _overlord_loop() {
-    for (int i = 0; i < o->surfaces_size; i++) {
-        wl_surface_commit(o->surfaces[i]);
-    }
-    wl_display_roundtrip(o->display);
-    widget_init(o->widget);
+static int _destroy() {
 
-    while (o->active) {
-        while (wl_display_prepare_read(o->display) != 0) {
-            wl_display_dispatch_pending(o->display);
-        }
-        wl_display_flush(o->display);
+    widget_destroy(o->widget);
 
-        int nfds = epoll_wait(o->epoll_fd, o->events, 10, -1);
-        if (nfds == -1) {
-            wl_display_cancel_read(o->display);
-            if (errno == EINTR) continue;
-            perror("Failed to wait epoll");
-            return 1;
-        }
-
-        int wl_has_data = 0;
-        for (int i = 0; i < nfds; i++) {
-            if (o->events[i].data.fd == o->display_fd) {
-                wl_has_data = 1;
-                break;
-            }
-        }
-
-        if (wl_has_data) {
-            wl_display_read_events(o->display);
-            wl_display_dispatch_pending(o->display);
-        } else {
-            wl_display_cancel_read(o->display);
-        }
-
-        uint64_t exp;
-        for (int i = 0; i < nfds; i++) {
-            if (o->events[i].data.fd == o->step_fd) {
-                read(o->step_fd, &exp, sizeof(exp));
-                // LATER LOOP THRU WIDGETS HERE
-                widget_step(o->widget);
-                if (!widget_draw(o->widget)) {
-                    wl_display_flush(o->display);
-                }
-            } else if (o->events[i].data.fd == o->repeat_fd) {
-                read(o->keyboard->repeat_fd, &exp, sizeof(exp));
-                keyboard_repeat_key(o->keyboard);
-            } else if (o->events[i].data.fd == o->ipc_fd) {
-                int client = accept(o->ipc_fd, NULL, NULL);
-                if (client >= 0) {
-                    char buf[256];
-                    int n = read(client, buf, sizeof(buf) - 1);
-                    if (n > 0) {
-                        buf[n] = '\0';
-                        if (strncmp(buf, "TOGGLE", 6) == 0) {
-                            overlord_toggle_widget();
-                        }
-                    }
-                    close(client);
-                }
-            }
-        }
-    }
-    return 0;
-}
-
-static int _overlord_destroy() {
-    if (o->step_fd != -1)
-        close(o->step_fd);
-    if (o->epoll_fd != -1)
-        close(o->epoll_fd);
-    if (o->repeat_fd != -1)
-        close(o->repeat_fd);
-    
     keyboard_destroy(o->keyboard);
     wl_seat_destroy(o->seat);
     wl_compositor_destroy(o->compositor);
@@ -309,24 +245,4 @@ static void _registry_global(void *data, struct wl_registry *registry,
         o->output = wl_registry_bind(registry, name, &wl_output_interface, 1);
     else if (strcmp(interface, wl_seat_interface.name) == 0)
         o->seat = wl_registry_bind(registry, name, &wl_seat_interface, 5);
-}
-
-static int _timer_create(long interval_ms) {
-    int fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK);
-    if (fd == -1) {
-        perror("Failed to create timer");
-        return -1;
-    }
-
-    struct itimerspec spec = {0};
-    spec.it_value.tv_sec = interval_ms / 1000;
-    spec.it_value.tv_nsec = (interval_ms % 1000) * 1000000;
-    spec.it_interval = spec.it_value;
-    
-    if (timerfd_settime(fd, 0, &spec, NULL) == -1) {
-        close(fd);
-        return -1;
-    }
-
-    return fd;
 }

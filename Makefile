@@ -18,7 +18,7 @@ WLR_PROTO = wlr-layer-shell-unstable-v1.xml
 # Target and sources
 TARGET = bar
 DRUN_TARGET = drun
-SRC_FILES = main.c canvas.c window.c keyboard.c drun.c bar.c status.c widget.c
+SRC_FILES = main.c canvas.c loop.c overlord.c keyboard.c drun.c bar.c status.c widget.c
 PROTO_FILES = wlr-layer-shell-unstable-v1-client-protocol.c xdg-shell-client-protocol.c
 
 # Object files from both source and generated directories
