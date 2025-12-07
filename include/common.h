@@ -6,6 +6,8 @@
 typedef struct Overlord Overlord;
 typedef struct Window Window;
 typedef struct Widget Widget;
+typedef struct Wayland Wayland;
+typedef struct WidgetOps WidgetOps;
 
 enum Surfaces {
     SURFACE_OVERLAY,
