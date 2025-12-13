@@ -1,21 +1,19 @@
-# Daniel's Intricate Cairo Shell
+# Passionfruit
 
-Shell for Cairo + Pango on Wayland in C to create desktop widgets. A major work in progress.
+Passionfruit creates desktop widgets such as wallpapers, status bars, and application launchers for wayland. Written in C using cairo and pango, it is designed to be lighter than using frameworks like gtk and qt in order to be more flexible for features such as animations and irregular shapes.
+
+![Screenshot](https://github.com/danielsodium/dash/blob/master/screenshot.png?raw=true)
+
+This is currently a work in progress, and is designed to meet my personal desktop needs. I do plan to improve it to become more modular and customizable in the future.
 
 ## TODO
- - Allow attachment of a draw timeout
- - Fix multiple monitors
- - Fix DRun list format
- - Clean up window functions
- - Add in singleton checking and IPC
- - Add in config reading
+ - Better support for multiple monitors
+ - Improve DRun list ordering
+ - Add in configuration reading
  - Create mouse events
- - Figure out a way to create widget hierarchies
- - Figure out what causes cpu usage spike
+ - Widget hierarchy
 
-
-# Widget Types
-
-- Box
-- Text
-- Input
+## Widget Types
+- Wallpaper
+- DRun
+- Bar
