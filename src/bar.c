@@ -69,6 +69,7 @@ int bar_draw(cairo_t* cairo, void* data) {
     cairo_move_to(cairo, 10, (1440 - text_height - 10));
     pango_cairo_show_layout(cairo, d->layout);
     return 0;
+
 }
 
 void bar_destroy(void* data) {
