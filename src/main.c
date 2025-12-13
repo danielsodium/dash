@@ -5,7 +5,7 @@
 
 #include "overlord.h"
 
-#define SOCKET_PATH "/tmp/my_widget.sock"
+#define SOCKET_PATH "/tmp/passionfruit.sock"
 
 static int ipc_fd = -1;
 

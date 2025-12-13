@@ -5,6 +5,7 @@
 #include <ctype.h>
 
 void wp_init(cairo_t* cairo, void* data) {
+    (void) data;
     cairo_set_source_rgb(cairo, 0.1, 0.1, 0.1);
     cairo_paint(cairo);
 
@@ -13,7 +14,6 @@ void wp_init(cairo_t* cairo, void* data) {
 
     cairo_set_source_surface(cairo, image, 0, 0);
     cairo_paint(cairo);
-    printf("GOT HERE\n");
 }
 
 WidgetOps* wp() {
