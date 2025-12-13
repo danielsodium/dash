@@ -1,6 +1,8 @@
 # Daniel's Intricate Cairo Shell
 
 Shell for Cairo + Pango on Wayland in C to create desktop widgets. A major work in progress.
+![Screenshot](https://github.com/danielsodium/dash/blob/master/screenshot.png?raw=true)
+
 
 ## TODO
  - Allow attachment of a draw timeout
