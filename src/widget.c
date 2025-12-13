@@ -12,6 +12,14 @@ void widget_step(Widget* w) {
     if (!widget_active) w->operators->toggle();
 }
 
+void widget_init_draw(Widget* w) {
+    struct wl_buffer* buffer = canvas_get_current_buffer(w->canvas);
+    wl_surface_attach(w->surface, buffer,0,0);
+    wl_surface_damage_buffer(w->surface, 0, 0, w->width, w->height);
+    wl_surface_commit(w->surface);
+    canvas_swap_buffers(w->canvas);
+}
+
 int widget_draw(Widget* w) {
     if (!w->active) return 1;
     if (!w->operators->draw) return 1;
@@ -35,6 +43,12 @@ void widget_keyboard(Widget* w, KeyboardData* d) {
 void widget_destroy(Widget* w) {
     if (!w->active || !w->operators->destroy) return;
     w->operators->destroy(w->data);
+}
+
+void widget_on_toggle(Widget* w) {
+    if (w->operators->on_toggle) {
+        w->operators->on_toggle(w->active, w->data);
+    }
 }
 
 Widget* widget_create(size_t width, size_t height, void* data, struct wl_shm* shm, WidgetOps* operators, struct wl_surface* surface) {

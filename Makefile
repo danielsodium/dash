@@ -16,9 +16,9 @@ PROTO_DIR = /usr/share/wayland-protocols
 WLR_PROTO = wlr-layer-shell-unstable-v1.xml
 
 # Target and sources
-TARGET = bar
+TARGET = dash
 DRUN_TARGET = drun
-SRC_FILES = main.c wayland.c canvas.c loop.c overlord.c keyboard.c drun.c bar.c status.c widget.c
+SRC_FILES = main.c wayland.c canvas.c loop.c overlord.c keyboard.c wallpaper.c drun.c bar.c status.c widget.c
 PROTO_FILES = wlr-layer-shell-unstable-v1-client-protocol.c xdg-shell-client-protocol.c
 
 # Object files from both source and generated directories
@@ -107,7 +107,7 @@ $(BIN_DIR)/$(DRUN_TARGET): $(DRUN_OBJECTS) | $(BIN_DIR)
 	$(CC) $(DRUN_OBJECTS) $(LIBS) -o $@
 
 run:
-	./bin/bar
+	./bin/dash
 
 clean:
 	rm -rf $(OBJ_DIR) $(DRUN_OBJ_DIR) $(BIN_DIR) $(GEN_DIR)

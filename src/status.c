@@ -77,12 +77,15 @@ char* print_battery(char* s) {
 
     // Get system data
     fp = fopen("/sys/class/power_supply/BAT0/capacity", "r");
+    if (!fp) return NULL;
     fscanf(fp, "%d", &charge);
     fclose(fp);
     fp = fopen("/sys/class/power_supply/BAT0/current_now", "r");
+    if (!fp) return NULL;
     fscanf(fp, "%lu", &current);
     fclose(fp);
     fp = fopen("/sys/class/power_supply/BAT0/voltage_now", "r");
+    if (!fp) return NULL;
     fscanf(fp, "%lu", &voltage);
     fclose(fp);
     power = ((current / 1e6) * (voltage / 1e6) - 5) * 2;
@@ -106,6 +109,7 @@ char* print_mem(char* s) {
     char label[64];
 
     fp = fopen("/proc/meminfo", "r");
+    if (!fp) return NULL;
     while (fscanf(fp, "%63s %lu %*s", label, &buf) == 2) {
         if (strcmp(label, "MemTotal:") == 0)
             mem_total = buf;
@@ -133,6 +137,7 @@ char* print_cpu(char* s) {
     int percent, temp;
 
     fp = fopen("/sys/class/thermal/thermal_zone3/temp", "r");
+    if (!fp) return NULL;
     fscanf(fp, "%d", &temp);
     fclose(fp);
 

@@ -5,11 +5,14 @@
 #include <xkbcommon/xkbcommon.h>
 #include <pango/pangocairo.h>
 
+#include "widget.h"
+
 #define WIDTH_CHARS 12
 
 typedef struct {
 
     int update;
+    int frames;
 
     PangoLayout* layout;
     PangoFontDescription* font;
@@ -21,7 +24,9 @@ typedef struct {
 
 void bar_init(cairo_t* cairo, void* data);
 int bar_step(int* active, void* data);
-void bar_draw(cairo_t* cairo, int* active, void* data);
+int bar_draw(cairo_t* cairo, void* data);
 void bar_destroy(void* data);
+
+WidgetOps* bar();
 
 #endif

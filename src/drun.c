@@ -77,58 +77,38 @@ void drun_init(cairo_t* cairo, void* data) {
     DRunData* d = data;
     d->input[0] = '\0';
     d->layout = pango_cairo_create_layout(cairo);
-    d->font = pango_font_description_from_string("Inter 20");
+    d->font = pango_font_description_from_string("JetBrainsMono Nerd Font 18");
     pango_layout_set_font_description(d->layout, d->font);
     d->update = 1;
 
     drun_get_bin(d);
 }
 
-void rounded_rectangle(cairo_t *cr, double x, double y, double width, double height, double radius) {
-    double degrees = M_PI / 180.0;
-
-    cairo_new_sub_path(cr);
-    cairo_arc(cr, x + width - radius, y + radius, radius, -90 * degrees, 0 * degrees);
-    cairo_arc(cr, x + width - radius, y + height - radius, radius, 0 * degrees, 90 * degrees);
-    cairo_arc(cr, x + radius, y + height - radius, radius, 90 * degrees, 180 * degrees);
-    cairo_arc(cr, x + radius, y + radius, radius, 180 * degrees, 270 * degrees);
-    cairo_close_path(cr);
-
-    cairo_fill(cr);
-
+void drun_toggle(int active, void* data) {
+    if (active) return;
+    DRunData* d = data;
+    d->input[0] = '\0';
+    drun_find(d);
 }
 
-void draw_gradient_rounded_rect(cairo_t* cr, double x, double y, double width, double height,
-                                double corner_radius,
-                                double r1, double g1, double b1,  // Start color
-                                double r2, double g2, double b2) { // End color
-    // Create a linear gradient from top-left to bottom-right
-    cairo_pattern_t* gradient = cairo_pattern_create_linear(
-        x, y,                    // Start point (top-left)
-        x + width, y + height    // End point (bottom-right)
-    );
-    
-    // Add color stops (0.0 = start, 1.0 = end)
-    cairo_pattern_add_color_stop_rgb(gradient, 0.0, r1, g1, b1);
-    cairo_pattern_add_color_stop_rgb(gradient, 1.0, r2, g2, b2);
-    
-    // Draw the rounded rectangle
-    double degrees = M_PI / 180.0;
-    
-    cairo_new_sub_path(cr);
-    cairo_arc(cr, x + width - corner_radius, y + corner_radius, corner_radius, -90 * degrees, 0 * degrees);
-    cairo_arc(cr, x + width - corner_radius, y + height - corner_radius, corner_radius, 0 * degrees, 90 * degrees);
-    cairo_arc(cr, x + corner_radius, y + height - corner_radius, corner_radius, 90 * degrees, 180 * degrees);
-    cairo_arc(cr, x + corner_radius, y + corner_radius, corner_radius, 180 * degrees, 270 * degrees);
-    cairo_close_path(cr);
-    
-    cairo_set_source(cr, gradient);
-    cairo_fill(cr);
-    
-    // Clean up
-    cairo_pattern_destroy(gradient);
-}
+static void drun_str(char* str, DRunData* d) {
+    size_t i;
+    char buffer[33];
+    char list[256];
 
+    list[0] = '\0';
+    for (i = 0; i < d->options_size; i++) {
+        snprintf(buffer, WIDTH_CHARS + 1, (i == 0) ? "> %s\n" : "  %s\n", d->options[i]);
+        buffer[WIDTH_CHARS-1] = '\n';
+        buffer[WIDTH_CHARS] = '\0';
+        strcat(list, buffer);
+    }
+
+    int input_diff = strlen(d->input) - WIDTH_CHARS + 3;
+    char* last_chars = d->input + ((input_diff > 0) ? input_diff : 0);
+
+    sprintf(str, "\n\n\n$ %s\xE2\x96\x88\n%s", last_chars, list);
+}
 int drun_draw(cairo_t* cairo, void* data) {
     DRunData* d = data;
 
@@ -136,39 +116,14 @@ int drun_draw(cairo_t* cairo, void* data) {
     cairo_set_source_rgba(cairo, 0.0, 0.0, 0.0, 0.0);
     cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
     cairo_paint(cairo);
-    cairo_set_operator(cairo, CAIRO_OPERATOR_OVER);
 
     cairo_move_to(cairo, 0, 0);
-    cairo_set_source_rgba(cairo, 0.9,0.9,0.9,0.5);
-    rounded_rectangle(cairo, 0, 0, 800,400, 10);
-    cairo_move_to(cairo, 20, 0);
-    cairo_set_source_rgb(cairo, 1, 1, 1);
-
-    // SEARCH BAR
-    cairo_set_source_rgba(cairo, 1.0,1.0,1.0,0.5);
-    rounded_rectangle(cairo, 40, 40, 720, 60, 10);
-
-    // RESULTS
-    rounded_rectangle(cairo, 40, 120, 720, 240, 10);
-
-    draw_gradient_rounded_rect(cairo, 710, 50, 40, 40, 5,
-                          1.0, 0.0, 0.0,  // Red
-                          1.0, 0.6, 0.4); // Blue
-   
-
-    cairo_set_source_rgba(cairo, 0.0,0.0,0.0,1.0);
-    cairo_move_to(cairo, 80, 55);
-    pango_layout_set_text(d->layout, d->input, -1);
+    cairo_set_source_rgba(cairo, 1.0,1.0,1.0,1.0);
+    char str[1024];
+    drun_str(str, d);
+    pango_layout_set_text(d->layout, str, -1);
     pango_cairo_update_layout(cairo, d->layout);
     pango_cairo_show_layout(cairo, d->layout);
-
-    for (size_t i = 0; i < d->options_size; i++) {
-        cairo_move_to(cairo, 80, 140+35*i);
-        pango_layout_set_text(d->layout, d->options[i], -1);
-        pango_cairo_update_layout(cairo, d->layout);
-        pango_cairo_show_layout(cairo, d->layout);
-    }
-
     return 0;
 }
 
@@ -226,4 +181,17 @@ void drun_destroy(void* data) {
     }
     free(d->bins);
     free(d);
+}
+
+WidgetOps* drun() {
+    WidgetOps* w_ops = malloc(sizeof(WidgetOps));
+    *w_ops = (WidgetOps) {
+        .init = drun_init,
+        .draw = drun_draw,
+        .step = NULL,
+        .keyboard = drun_on_key,
+        .destroy = drun_destroy,
+        .on_toggle = drun_toggle
+    };
+    return w_ops;
 }

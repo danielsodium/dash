@@ -20,9 +20,11 @@ void system_widget(char* s) {
 void clock_widget(char* s) {
     time_t now = time(NULL);
     struct tm *tm_info = localtime(&now);
-    char buffer[32];
-    strftime(buffer, sizeof(buffer), "%I:%M %p\n%A", tm_info);
-    strcpy(s, buffer);
+    char time_buffer[32];
+    char date_buffer[32];
+    strftime(time_buffer, sizeof(time_buffer), "%I:%M %p", tm_info);
+    strftime(date_buffer, sizeof(date_buffer), "%A", tm_info);
+    sprintf(s, "%12s\n%12s", time_buffer, date_buffer);
 }
 
 void bar_init(cairo_t* cairo, void* data) {
@@ -32,18 +34,23 @@ void bar_init(cairo_t* cairo, void* data) {
     pango_layout_set_font_description(d->layout, d->font);
     d->top_str[0] = '\0';
     d->bot_str[0] = '\0';
+    d->frames = 100;
 }
 
 int bar_step(int* active, void* data) {
     (void)active;
     BarData* d = data;
+    if (d->frames < 60) {
+        d->frames++;
+        return 0;
+    }
+    d->frames = 0;
     clock_widget(d->top_str);
     system_widget(d->bot_str);
     return 1;
 }
 
-void bar_draw(cairo_t* cairo, int* active, void* data) {
-    (void)active;
+int bar_draw(cairo_t* cairo, void* data) {
     BarData* d = data;
     int text_width, text_height;
 
@@ -61,7 +68,7 @@ void bar_draw(cairo_t* cairo, int* active, void* data) {
     pango_layout_get_pixel_size(d->layout, &text_width, &text_height);
     cairo_move_to(cairo, 10, (1440 - text_height - 10));
     pango_cairo_show_layout(cairo, d->layout);
-    *active = 0;
+    return 0;
 }
 
 void bar_destroy(void* data) {
@@ -69,4 +76,17 @@ void bar_destroy(void* data) {
     g_object_unref(d->layout);
     pango_font_description_free(d->font);
     free(d);
+}
+
+WidgetOps* bar() {
+    WidgetOps* b = malloc(sizeof(WidgetOps));
+    *b = (WidgetOps) {
+        .init = bar_init,
+        .draw = bar_draw,
+        .keyboard = NULL,
+        .step = bar_step,
+        .destroy = bar_destroy,
+        .on_toggle = NULL
+    };
+    return b;
 }

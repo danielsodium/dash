@@ -20,7 +20,12 @@ struct Overlord {
 
     Keyboard* keyboard;
     Widget* widget;
+
     Loop* loop;
+
+    Widget** widgets;
+    char** widget_names;
+    size_t widgets_size;
 };
 
 int overlord_run(int sock);

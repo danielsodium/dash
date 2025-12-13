@@ -11,6 +11,7 @@ struct WidgetOps {
     int (*keyboard)(KeyboardData*, int*, void*);
     void (*destroy)(void*);
     void(*toggle)(void);
+    void(*on_toggle)(int, void*);
 };
 
 struct Widget {
@@ -28,8 +29,9 @@ void widget_init(Widget* w);
 void widget_step(Widget* w);
 void widget_destroy(Widget* w);
 void widget_keyboard(Widget* w, KeyboardData* d);
-void widget_toggle(Widget* w);
+void widget_on_toggle(Widget* w);
 int widget_draw(Widget* w);
+void widget_init_draw(Widget* w);
 
 
 #endif

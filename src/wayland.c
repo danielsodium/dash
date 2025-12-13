@@ -27,9 +27,10 @@ static struct wl_registry_listener _registry_listener = {
 
 static void _layer_surface_configure(void *data,
                                    struct zwlr_layer_surface_v1 *surface,
-                                   uint32_t serial, uint32_t w, uint32_t h) {
-    (void)data; (void)w; (void)h;
+                                   uint32_t serial, uint32_t wa, uint32_t h) {
+    (void)data; (void)wa; (void)h;
     zwlr_layer_surface_v1_ack_configure(surface, serial);
+    w->surfaces_loaded++;
 }
 
 static void _layer_surface_closed(void *data,
@@ -80,7 +81,7 @@ int wayland_init() {
     *w = (Wayland) {
         .surfaces_capacity = 1,
         .surfaces = malloc(sizeof(struct wl_surface*)),
-        .layer_surfaces = malloc(sizeof(struct zwlr_layer_surface_v1*)),
+        .layer_surfaces = malloc(sizeof(struct zwlr_layer_surface_v1*))
     };
     w->display = wl_display_connect(NULL);
     if (!w->display) {
@@ -112,13 +113,15 @@ void wayland_commit_surfaces() {
     wl_display_roundtrip(w->display);
 }
 void wayland_prepare_display() {
+    wl_display_flush(w->display);
     while (wl_display_prepare_read(w->display) != 0) {
         wl_display_dispatch_pending(w->display);
     }
-    wl_display_flush(w->display);
 }
-void wayland_toggle_surface() {
+int wayland_dispatch() {
+    return wl_display_dispatch(w->display);
 }
+
 void wayland_display_events() {
     wl_display_read_events(w->display);
     wl_display_dispatch_pending(w->display);
@@ -146,4 +149,8 @@ void wayland_hide_surface(struct wl_surface* surface) {
 }
 void wayland_commit(struct wl_surface* surface) {
     wl_surface_commit(surface);
+}
+
+int wayland_surfaces_loaded() {
+    return w->surfaces_loaded;
 }

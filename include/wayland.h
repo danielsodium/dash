@@ -24,6 +24,7 @@ struct Wayland {
     struct zwlr_layer_surface_v1** layer_surfaces;
     int surfaces_size;
     int surfaces_capacity;
+    int surfaces_loaded;
 };
 
 int wayland_init();
@@ -36,6 +37,8 @@ void wayland_display_events();
 void wayland_flush();
 void wayland_cancel_read();
 void wayland_roundtrip();
+int wayland_surfaces_loaded();
+int wayland_dispatch();
 struct wl_surface* wayland_create_surface(size_t width, size_t height, int anchor, int layer);
 
 struct wl_seat* wayland_seat();
