@@ -58,7 +58,10 @@ struct wl_surface* wayland_create_surface(size_t width, size_t height, int ancho
         zwlr_layer_surface_v1_set_exclusive_zone(ls, -1);
 
     zwlr_layer_surface_v1_set_keyboard_interactivity(ls,
-            ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_ON_DEMAND);
+        layer == ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY ? 
+            ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_ON_DEMAND :
+            ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_NONE
+        );
     zwlr_layer_surface_v1_add_listener(ls, &ls_listener, w);
 
         // Add surface to overlord
@@ -154,3 +157,4 @@ void wayland_commit(struct wl_surface* surface) {
 int wayland_surfaces_loaded() {
     return w->surfaces_loaded;
 }
+
