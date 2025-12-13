@@ -13,7 +13,7 @@ This is currently a work in progress, and is designed to meet my personal deskto
  - Create mouse events
  - Widget hierarchy
 
-# Widget Types
+## Widget Types
 - Wallpaper
 - DRun
 - Bar
