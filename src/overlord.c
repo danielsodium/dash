@@ -34,6 +34,8 @@ static void _toggle_widget() {
         printf("Toggle drun on.\n");
     } else {
         o->keyboard->repeating = false;
+        wl_surface_commit(o->widgets[0]->surface);
+        wayland_roundtrip();
         wayland_hide_surface(o->widgets[0]->surface);
         printf("Toggle drun off.\n");
     }
