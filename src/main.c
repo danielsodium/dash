@@ -1,57 +1,81 @@
-#include <stdio.h>
-#include <time.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <sys/stat.h>
 #include <unistd.h>
-#include <string.h>
-#include <ctype.h>
 
-#include "window.h"
-#include "drun.h"
-#include "bar.h"
+#include "overlord.h"
 
-void run_bar() {
-    Window* w;
-    BarData* data = malloc(sizeof(BarData));
-    int layer, anchor;
+#define SOCKET_PATH "/tmp/my_widget.sock"
 
-    layer = ZWLR_LAYER_SHELL_V1_LAYER_TOP;
-    anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP |
-             ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM |
-             ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT;
+static int ipc_fd = -1;
 
-    w = window_create(180, 1440, anchor, layer);
-    window_attach_init(w, bar_init);
-    window_attach_step(w, 1000, bar_step);
-    window_attach_draw(w, bar_draw);
-    window_attach_data(w, (void*) data);
-    window_attach_destroy(w, bar_destroy);
-
-    window_run(w);
+static int create_socket() {
+    int sock = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (sock < 0) return -1;
+    
+    struct sockaddr_un addr = {0};
+    addr.sun_family = AF_UNIX;
+    strncpy(addr.sun_path, SOCKET_PATH, sizeof(addr.sun_path) - 1);
+    
+    if (bind(sock, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+        close(sock);
+        return -1;
+    }
+    
+    listen(sock, 1);
+    return sock;
 }
 
-void run_drun() {
-    Window* w;
-    DRunData* data = malloc(sizeof(DRunData));
-    int layer, anchor;
+static int signal_existing_instance() {
+    int sock = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (sock < 0) return -1;
+    
+    struct sockaddr_un addr = {0};
+    addr.sun_family = AF_UNIX;
+    strncpy(addr.sun_path, SOCKET_PATH, sizeof(addr.sun_path) - 1);
+    
+    if (connect(sock, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+        close(sock);
+        return -1;
+    }
+    
+    const char* msg = "TOGGLE\n";
+    write(sock, msg, strlen(msg));
+    close(sock);
+    return 0;
+}
 
-    layer = ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY;
-    anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP |
-             ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM |
-             ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT;
+static void cleanup_socket() {
+    if (ipc_fd != -1) {
+        close(ipc_fd);
+        ipc_fd = -1;
+    }
+    unlink(SOCKET_PATH);
+}
 
-    w = window_create(180, 1440, anchor, layer);
-    window_attach_draw(w, drun_draw);
-    window_attach_init(w, drun_init);
-    window_attach_data(w, (void*) data);
-    window_attach_destroy(w, drun_destroy);
-    window_attach_keyboard_listener(w, drun_on_key);
-    window_run(w);
+static void signal_handler(int sig) {
+    (void)sig;
+    cleanup_socket();
+    exit(0);
 }
 
 int main() {
-#ifdef DRUN
-    run_drun();
-#else
-    run_bar();
-#endif
+    ipc_fd = create_socket();
+    if (ipc_fd < 0) {
+        if (signal_existing_instance() == 0) {
+            printf("Signaled existing instance\n");
+            return 0;
+        }
+        fprintf(stderr, "Failed to signal existing instance\n");
+        return 1;
+    }
+
+    signal(SIGINT, signal_handler);
+    signal(SIGTERM, signal_handler);
+    atexit(cleanup_socket);
+
+    overlord_run(ipc_fd);
+
+    close(ipc_fd);
     return 0;
 }

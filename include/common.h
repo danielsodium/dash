@@ -1,7 +1,20 @@
 #ifndef _COMMON_H_
 #define _COMMON_H_
 
+#include <xkbcommon/xkbcommon.h>
+
+typedef struct Overlord Overlord;
 typedef struct Window Window;
+typedef struct Widget Widget;
+typedef struct Wayland Wayland;
+typedef struct WidgetOps WidgetOps;
+
+enum Surfaces {
+    SURFACE_OVERLAY,
+    SURFACE_TOP,
+    SURFACE_BOTTOM,
+    SURFACE_BACKGROUND
+};
 
 // on_key lines up with the enum for key_state and KeyboardEvent
 enum KeyboardEvent {

@@ -6,26 +6,6 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
-static void drun_str(char* str, DRunData* d) {
-    size_t i;
-    char buffer[33];
-    char list[256];
-
-
-    list[0] = '\0';
-    for (i = 0; i < d->options_size; i++) {
-        snprintf(buffer, WIDTH_CHARS + 1, (i == 0) ? "> %s\n" : "  %s\n", d->options[i]);
-        buffer[WIDTH_CHARS-1] = '\n';
-        buffer[WIDTH_CHARS] = '\0';
-        strcat(list, buffer);
-    }
-
-    int input_diff = strlen(d->input) - WIDTH_CHARS + 3;
-    char* last_chars = d->input + ((input_diff > 0) ? input_diff : 0);
-
-    sprintf(str, "\n\n\ndrun\n$ %s\xE2\x96\x88\n%s", last_chars, list);
-}
-
 static void drun_get_bin(DRunData *d) {
     char* path, *p, *p_start, *dir_name;
     DIR* dir;
@@ -104,8 +84,32 @@ void drun_init(cairo_t* cairo, void* data) {
     drun_get_bin(d);
 }
 
-void drun_draw(cairo_t* cairo, int* active, void* data) {
-    (void)active;
+void drun_toggle(int active, void* data) {
+    if (active) return;
+    DRunData* d = data;
+    d->input[0] = '\0';
+    drun_find(d);
+}
+
+static void drun_str(char* str, DRunData* d) {
+    size_t i;
+    char buffer[33];
+    char list[256];
+
+    list[0] = '\0';
+    for (i = 0; i < d->options_size; i++) {
+        snprintf(buffer, WIDTH_CHARS + 1, (i == 0) ? "> %s\n" : "  %s\n", d->options[i]);
+        buffer[WIDTH_CHARS-1] = '\n';
+        buffer[WIDTH_CHARS] = '\0';
+        strcat(list, buffer);
+    }
+
+    int input_diff = strlen(d->input) - WIDTH_CHARS + 3;
+    char* last_chars = d->input + ((input_diff > 0) ? input_diff : 0);
+
+    sprintf(str, "\n\n\n$ %s\xE2\x96\x88\n%s", last_chars, list);
+}
+int drun_draw(cairo_t* cairo, void* data) {
     DRunData* d = data;
 
     // Clear background
@@ -120,6 +124,7 @@ void drun_draw(cairo_t* cairo, int* active, void* data) {
     pango_layout_set_text(d->layout, str, -1);
     pango_cairo_update_layout(cairo, d->layout);
     pango_cairo_show_layout(cairo, d->layout);
+    return 0;
 }
 
 int drun_on_key(KeyboardData* event_data, int* active, void* data) {
@@ -161,7 +166,7 @@ int drun_on_key(KeyboardData* event_data, int* active, void* data) {
         drun_find(d);
         d->update = 1;
     }
-    return 1;
+    return 0;
 }
 
 void drun_destroy(void* data) {
@@ -176,4 +181,17 @@ void drun_destroy(void* data) {
     }
     free(d->bins);
     free(d);
+}
+
+WidgetOps* drun() {
+    WidgetOps* w_ops = malloc(sizeof(WidgetOps));
+    *w_ops = (WidgetOps) {
+        .init = drun_init,
+        .draw = drun_draw,
+        .step = NULL,
+        .keyboard = drun_on_key,
+        .destroy = drun_destroy,
+        .on_toggle = drun_toggle
+    };
+    return w_ops;
 }
