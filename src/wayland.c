@@ -52,10 +52,16 @@ struct wl_surface* wayland_create_surface(size_t width, size_t height, int ancho
 
     // TOP/BOTTOM are exclusive layers
     if (layer != ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY &&
-        layer != ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND)
-        zwlr_layer_surface_v1_set_exclusive_zone(ls, width);
-    else
+        layer != ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND) {
+        int vert = ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM | ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP;
+        if ((anchor ^ vert) == 0) {
+            zwlr_layer_surface_v1_set_exclusive_zone(ls, width);
+        } else {
+            zwlr_layer_surface_v1_set_exclusive_zone(ls, height);
+        }
+    } else {
         zwlr_layer_surface_v1_set_exclusive_zone(ls, -1);
+    }
 
     zwlr_layer_surface_v1_set_keyboard_interactivity(ls,
         layer == ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY ? 

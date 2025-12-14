@@ -7,25 +7,39 @@
 
 #include "widget.h"
 
-#define WIDTH_CHARS 12
+typedef enum RadiusCorners {
+    CORNER_TOP_LEFT = 0,
+    CORNER_TOP_RIGHT,
+    CORNER_BOT_LEFT,
+    CORNER_BOT_RIGHT
+} RadiusCorners;
 
 typedef struct {
+    int x, y, w, h, tx, ty, tw, th;
+} Section;
 
+typedef struct QueueNode {
+    Section* section;
+    int dx, dy, dw, dh, dr;
+    int wait;
+    struct QueueNode* next;
+} QueueNode;
+
+typedef struct {
     int update;
-    int frames;
+    int x, y, w, h;
+
+    Section* sections;
+    size_t sections_size;
+
+    QueueNode* animation_head;
+    QueueNode* animation_tail;
 
     PangoLayout* layout;
     PangoFontDescription* font;
 
-    char top_str[512];
-    char bot_str[512];
-
 } BarData;
 
-void bar_init(cairo_t* cairo, void* data);
-int bar_step(int* active, void* data);
-int bar_draw(cairo_t* cairo, void* data);
-void bar_destroy(void* data);
 
 WidgetOps* bar();
 
