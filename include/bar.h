@@ -8,7 +8,8 @@
 #include "widget.h"
 
 typedef enum SectionArgs {
-    SECTION_X = 0,
+    SECTION_ACTIVE = 0,
+    SECTION_X,
     SECTION_Y,
     SECTION_W,
     SECTION_H,
@@ -26,9 +27,13 @@ typedef enum SectionArgs {
     SECTION_TARGET_R4
 } SectionArgs;
 
+typedef enum Actions {
+    ACTION_ACTIVATE,
+    ACTION_DEACTIVATE
+} Actions;
+
 typedef struct {
-    int active;
-    int args[16];
+    int args[17];
 } Section;
 
 typedef struct QueueNode {
@@ -37,7 +42,7 @@ typedef struct QueueNode {
     int value;
     int wait;
     struct QueueNode* next;
-} QueueNode;
+} AnimationNode;
 
 typedef struct {
     int update;
@@ -46,8 +51,11 @@ typedef struct {
     Section* sections;
     size_t sections_size;
 
-    QueueNode* animation_head;
-    QueueNode* animation_tail;
+    AnimationNode* animation_head;
+    AnimationNode* animation_tail;
+
+    AnimationNode* action_head;
+    AnimationNode* action_tail;
 
     PangoLayout* layout;
     PangoFontDescription* font;

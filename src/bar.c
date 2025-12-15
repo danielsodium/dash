@@ -37,14 +37,14 @@ void section_set_radi(Section* s, int r1, int r2, int r3, int r4) {
 }
 
 void create_animation(BarData* b, int section_num, int wait, int property, int value) {
-    QueueNode* a = malloc(sizeof(QueueNode));
+    AnimationNode* a = malloc(sizeof(AnimationNode));
     if (b->animation_tail)
         b->animation_tail->next = a;
     else
         b->animation_head = a;
     b->animation_tail = a;
 
-    *(a) = (QueueNode) {
+    *(a) = (AnimationNode) {
         .section = b->sections + section_num,
         .property = property,
         .value = value,
@@ -59,19 +59,18 @@ void activate_section(BarData* b, size_t x) {
     int right = -1;
     int section_width = b->sections[x].args[SECTION_W];
     // Find left and right sections
-    for (int i = (int)x; i >= 0; i--) {
-        if (b->sections[i].active) {
+    for (int i = (int)x - 1; i >= 0; i--) {
+        if (b->sections[i].args[SECTION_ACTIVE]) {
             left = i;
             break;
         }
     }
-    for (size_t i = x; i < b->sections_size; i++) {
-        if (b->sections[i].active) {
+    for (size_t i = x + 1; i < b->sections_size; i++) {
+        if (b->sections[i].args[SECTION_ACTIVE]) {
             right = i;
             break;
         }
     }
-    printf("%d %d\n", left, right);
 
     // round the inserting section
     section_set_radi(b->sections + x, 10, 10, 0, 0);
@@ -81,36 +80,97 @@ void activate_section(BarData* b, size_t x) {
     if (right != -1) create_animation(b, right, 0, SECTION_TARGET_R1, 10);
 
     // move all previous sections left
+    int first = 1;
     for (size_t i = 0; i < x; i++) {
-        create_animation(b, i, i == 0, SECTION_TARGET_X, b->sections[i].args[SECTION_X] - section_width/2);
+        create_animation(b, i, first, SECTION_TARGET_X, b->sections[i].args[SECTION_X] - section_width/2);
+        first = 0;
     }
     for (size_t i = x+1; i < b->sections_size; i++) {
-
         create_animation(b, i, 0, SECTION_TARGET_X, b->sections[i].args[SECTION_X] + section_width/2);
     }
 
-    create_animation(b, x, 1, SECTION_TARGET_Y, 0);
-
     if (left == -1 && right == -1) {
-        printf("%d\n", b->w/2 - section_width/2);
-
         create_animation(b, x, 0, SECTION_X, b->w/2 - section_width/2);
         create_animation(b, x, 0, SECTION_TARGET_X, b->w/2 - section_width/2);
     } else if (right == -1) {
         create_animation(b, x, 0, SECTION_X, b->sections[left].args[SECTION_X] + b->sections[left].args[SECTION_W] - section_width/2);
         create_animation(b, x, 0, SECTION_TARGET_X, b->sections[left].args[SECTION_X] + b->sections[left].args[SECTION_W] - section_width/2);
     } else {
-        create_animation(b, x, 0, SECTION_X, b->sections[right].args[SECTION_X] - section_width * 1.5);
-        create_animation(b, x, 0, SECTION_TARGET_X, b->sections[right].args[SECTION_X] - section_width * 1.5);
+        create_animation(b, x, 0, SECTION_X, b->sections[right].args[SECTION_X] - section_width/2);
+        create_animation(b, x, 0, SECTION_TARGET_X, b->sections[right].args[SECTION_X] - section_width/2);
     }
 
+    create_animation(b, x, 1, SECTION_TARGET_Y, 0);
+    create_animation(b, x, 1, SECTION_ACTIVE, 1);
 
-    if (left != -1) create_animation(b, x, 1, SECTION_TARGET_R2, 0);
-    if (right != -1) create_animation(b, x, 0, SECTION_TARGET_R1, 0);
+    if (left != -1) create_animation(b, x, 0, SECTION_TARGET_R1, 0);
+    if (right != -1) create_animation(b, x, 0, SECTION_TARGET_R2, 0);
 
     if (left != -1) create_animation(b, left, 0, SECTION_TARGET_R2, 0);
     if (right != -1) create_animation(b, right, 0, SECTION_TARGET_R1, 0);
 
+}
+
+void deactivate_section(BarData* b, size_t x) {
+
+    int left = -1;
+    int right = -1;
+    int section_width = b->sections[x].args[SECTION_W];
+    // Find left and right sections
+    for (int i = (int)x - 1; i >= 0; i--) {
+        if (b->sections[i].args[SECTION_ACTIVE]) {
+            left = i;
+            break;
+        }
+    }
+    for (size_t i = x + 1; i < b->sections_size; i++) {
+        if (b->sections[i].args[SECTION_ACTIVE]) {
+            right = i;
+            break;
+        }
+    }
+
+    // round corners on adjacent sections
+    if (left != -1) create_animation(b, left, 0, SECTION_TARGET_R2, 10);
+    if (right != -1) create_animation(b, right, 0, SECTION_TARGET_R1, 10);
+    if (left != -1) create_animation(b, x, 0, SECTION_TARGET_R1, 0);
+    if (right != -1) create_animation(b, x, 0, SECTION_TARGET_R2, 0);
+
+    create_animation(b, x, 1, SECTION_TARGET_Y, b->h);
+
+    // move all previous sections
+    int first = 1;
+    for (size_t i = 0; i < x; i++) {
+        create_animation(b, i, first, SECTION_TARGET_X, b->sections[i].args[SECTION_X] + section_width/2);
+        first = 0;
+    }
+    for (size_t i = x+1; i < b->sections_size; i++) {
+        create_animation(b, i, 0, SECTION_TARGET_X, b->sections[i].args[SECTION_X] - section_width/2);
+    }
+
+    create_animation(b, x, 1, SECTION_ACTIVE, 0);
+
+    if (left != -1) create_animation(b, left, 0, SECTION_TARGET_R2, 0);
+    if (right != -1) create_animation(b, right, 0, SECTION_TARGET_R1, 0);
+
+}
+
+
+void action_queue(BarData* b, int action, int index) {
+    AnimationNode* a = malloc(sizeof(AnimationNode));
+    if (b->action_tail)
+        b->action_tail->next = a;
+    else
+        b->action_head = a;
+    b->action_tail = a;
+
+    *(a) = (AnimationNode) {
+        .section = b->sections + index,
+        .property = action,
+        .value = index,
+        .wait = 0,
+        .next = NULL
+    };
 }
 
 void bar_init(cairo_t* cairo, void* data) {
@@ -121,19 +181,28 @@ void bar_init(cairo_t* cairo, void* data) {
 
     b->animation_head = NULL;
     b->animation_tail = NULL;
+    b->action_head = NULL;
+    b->action_tail = NULL;
 
     b->x = 0;
     b->y = 1440 - 30;
     b->w = 2560;
     b->h = 50;
-    b->sections_size = 1;
+    b->sections_size = 4;
     b->sections = calloc(b->sections_size, sizeof(Section));
 
     // create section
     int section_width = 200;
     section_set_dim(b->sections, 0, 50, section_width, 50);
+    section_set_dim(b->sections + 1, 0, 50, section_width, 50);
+    section_set_dim(b->sections + 2, 0, 50, section_width, 50);
+    section_set_dim(b->sections + 3, 0, 50, section_width, 50);
 
-    activate_section(b, 0);
+    action_queue(b, ACTION_ACTIVATE, 0);
+    action_queue(b, ACTION_ACTIVATE, 2);
+    action_queue(b, ACTION_ACTIVATE, 1);
+    action_queue(b, ACTION_ACTIVATE, 3);
+    action_queue(b, ACTION_DEACTIVATE, 1);
 
     b->update = 1;
     bar_draw(cairo, data);
@@ -173,8 +242,10 @@ int bar_step(int* active, void* data) {
         b->update |= goto_target(a, SECTION_R4, SECTION_TARGET_R4);
     }
 
-    if (!b->update && b->animation_head) {
-        QueueNode* a = b->animation_head;
+    if (b->update) return 0;
+
+    if (b->animation_head) {
+        AnimationNode* a = b->animation_head;
         do {
             b->animation_head = b->animation_head->next;
             if (!b->animation_head) b->animation_tail = NULL;
@@ -183,7 +254,20 @@ int bar_step(int* active, void* data) {
             a = b->animation_head;
         }
         while (a && !a->wait);
-    } 
+    } else if (b->action_head) {
+        AnimationNode* a = b->action_head;
+        b->action_head = b->action_head->next;
+        if (!b->action_head) b->action_tail = NULL;
+
+        if (a->property == ACTION_ACTIVATE) {
+            activate_section(b, a->value);
+        }
+        if (a->property == ACTION_DEACTIVATE) {
+            deactivate_section(b, a->value);
+        }
+
+        free(a);
+    }
 
     return 0;
 }
