@@ -146,6 +146,7 @@ int overlord_run(int sock) {
         widget_init(o->widgets[i]);
         widget_init_draw(o->widgets[i]);
     }
+    wayland_flush();
 
     while (o->active) {
         loop_run(o->loop);
