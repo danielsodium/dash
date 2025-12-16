@@ -42,13 +42,14 @@ static void _toggle_widget() {
     wayland_flush();
 }
 
-void _display_callback(int fd) {
-    (void)fd;
+void _display_callback(int fd, void* arg) {
+    (void)fd; (void)arg;
     wayland_prepare_display();
     wayland_display_events();
 }
 
-void _step_callback(int fd) {
+void _step_callback(int fd, void* arg) {
+    (void)arg;
     uint64_t exp;
     read(fd, &exp, sizeof(exp));
     for (size_t i = 0; i < o->widgets_size; i++) {
@@ -59,13 +60,15 @@ void _step_callback(int fd) {
     }
 }
 
-void _repeat_callback(int fd) {
+void _repeat_callback(int fd, void* arg) {
+    (void)arg;
     uint64_t exp;
     read(fd, &exp, sizeof(exp));
     keyboard_repeat_key(o->keyboard);
 }
 
-void _ipc_callback(int fd) {
+void _ipc_callback(int fd, void* arg) {
+    (void)arg;
     int client = accept(fd, NULL, NULL);
     if (client >= 0) {
         char buf[256];
@@ -128,9 +131,9 @@ int overlord_run(int sock) {
 
     // Create event loop
     o->loop = loop_create();
-    loop_add_fd(o->loop, sock, _ipc_callback);
-    loop_add_fd(o->loop, wayland_display_fd(), _display_callback);
-    loop_add_fd(o->loop, o->keyboard->repeat_fd, _repeat_callback);
+    loop_add_fd(o->loop, sock, _ipc_callback, NULL);
+    loop_add_fd(o->loop, wayland_display_fd(), _display_callback, NULL);
+    loop_add_fd(o->loop, o->keyboard->repeat_fd, _repeat_callback, NULL);
     loop_add_timer(o->loop, 17, _step_callback);
 
     wayland_commit_surfaces();
@@ -145,6 +148,11 @@ int overlord_run(int sock) {
     for (size_t i = 0; i < o->widgets_size; i++) {
         widget_init(o->widgets[i]);
         widget_init_draw(o->widgets[i]);
+        WidgetFD* fds = widget_get_fd(o->widgets[i]);
+        if (fds == NULL) continue;
+        for (int j = 0; j < fds->size; j++) {
+            loop_add_fd(o->loop, fds->fd[j], fds->callback[j], (void*)o->widgets[i]->data);
+        }
     }
     wayland_flush();
 

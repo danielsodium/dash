@@ -5,7 +5,7 @@
 #include <sys/socket.h>
 #include <time.h>
 
-typedef void (*LoopCallback)(int);
+typedef void (*LoopCallback)(int, void*);
 
 typedef struct Loop {
     int epoll;
@@ -13,13 +13,14 @@ typedef struct Loop {
 
     int* fds;
     LoopCallback* callbacks;
+    void** args;
     int fds_size;
     int fds_cap;
 } Loop;
 
 
 Loop* loop_create();
-void loop_add_fd(Loop* l, int fd, LoopCallback cb);
+void loop_add_fd(Loop* l, int fd, LoopCallback cb, void* args);
 void loop_add_timer(Loop* l, long interval, LoopCallback cb);
 void loop_run(Loop* l);
 

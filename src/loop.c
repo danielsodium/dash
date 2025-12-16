@@ -11,6 +11,7 @@ Loop* loop_create() {
     l->fds_size = 0;
     l->fds_cap = 2;
     l->fds = malloc(2 * sizeof(int));
+    l->args = malloc(2 * sizeof(void*));
     l->callbacks = malloc(2 * sizeof(LoopCallback));
     l->epoll = epoll_create1(0);
     if (l->epoll == -1) {
@@ -20,7 +21,7 @@ Loop* loop_create() {
     return l;
 }
 
-void loop_add_fd(Loop* l, int fd, LoopCallback cb) {
+void loop_add_fd(Loop* l, int fd, LoopCallback cb, void* args) {
     struct epoll_event ev = {0};
     ev.events = EPOLLIN;
     ev.data.fd = fd;
@@ -33,9 +34,11 @@ void loop_add_fd(Loop* l, int fd, LoopCallback cb) {
         l->fds_cap *= 2;
         l->fds = realloc(l->fds, sizeof(int) * l->fds_cap);
         l->callbacks = realloc(l->callbacks , sizeof(LoopCallback) * l->fds_cap);
+        l->args = realloc(l->args, sizeof(void*) * l->fds_cap);
     }
     l->callbacks[l->fds_size] = cb;
     l->fds[l->fds_size] = fd;
+    l->args[l->fds_size] = args;
     l->fds_size++;
 }
 
@@ -56,7 +59,7 @@ void loop_add_timer(Loop* l, long interval, LoopCallback cb) {
         return;
     }
 
-    loop_add_fd(l, fd, cb);
+    loop_add_fd(l, fd, cb, NULL);
 }
 
 void loop_run(Loop* l) {
@@ -70,7 +73,7 @@ void loop_run(Loop* l) {
         for (int j = 0; j < l->fds_size; j++) {
             int fd = l->events[i].data.fd;
             if (fd == l->fds[j]) {
-                l->callbacks[j](fd);
+                l->callbacks[j](fd, l->args[j]);
             }
         }
     }

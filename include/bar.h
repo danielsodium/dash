@@ -51,6 +51,8 @@ typedef struct {
     Section* sections;
     size_t sections_size;
 
+    char song[128];
+
     AnimationNode* animation_head;
     AnimationNode* animation_tail;
 

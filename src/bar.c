@@ -133,8 +133,8 @@ void deactivate_section(BarData* b, size_t x) {
     // round corners on adjacent sections
     if (left != -1) create_animation(b, left, 0, SECTION_TARGET_R2, 10);
     if (right != -1) create_animation(b, right, 0, SECTION_TARGET_R1, 10);
-    if (left != -1) create_animation(b, x, 0, SECTION_TARGET_R1, 0);
-    if (right != -1) create_animation(b, x, 0, SECTION_TARGET_R2, 0);
+    if (left != -1) create_animation(b, x, 0, SECTION_TARGET_R1, 10);
+    if (right != -1) create_animation(b, x, 0, SECTION_TARGET_R2, 10);
 
     create_animation(b, x, 1, SECTION_TARGET_Y, b->h);
 
@@ -150,11 +150,11 @@ void deactivate_section(BarData* b, size_t x) {
 
     create_animation(b, x, 1, SECTION_ACTIVE, 0);
 
-    if (left != -1) create_animation(b, left, 0, SECTION_TARGET_R2, 0);
-    if (right != -1) create_animation(b, right, 0, SECTION_TARGET_R1, 0);
-
+    if (left != -1 && right != -1) {
+        create_animation(b, left, 0, SECTION_TARGET_R2, 0);
+        create_animation(b, right, 0, SECTION_TARGET_R1, 0);
+    }
 }
-
 
 void action_queue(BarData* b, int action, int index) {
     AnimationNode* a = malloc(sizeof(AnimationNode));
@@ -176,7 +176,7 @@ void action_queue(BarData* b, int action, int index) {
 void bar_init(cairo_t* cairo, void* data) {
     BarData* b = data;
     b->layout = pango_cairo_create_layout(cairo);
-    b->font = pango_font_description_from_string("JetBrainsMono Nerd Font 18");
+    b->font = pango_font_description_from_string("JetBrainsMono Nerd Font 12");
     pango_layout_set_font_description(b->layout, b->font);
 
     b->animation_head = NULL;
@@ -203,6 +203,9 @@ void bar_init(cairo_t* cairo, void* data) {
     action_queue(b, ACTION_ACTIVATE, 1);
     action_queue(b, ACTION_ACTIVATE, 3);
     action_queue(b, ACTION_DEACTIVATE, 1);
+    action_queue(b, ACTION_DEACTIVATE, 3);
+    action_queue(b, ACTION_ACTIVATE, 3);
+    action_queue(b, ACTION_DEACTIVATE, 3);
 
     b->update = 1;
     bar_draw(cairo, data);
@@ -225,24 +228,27 @@ int goto_target(int* a, int current, int target) {
 int bar_step(int* active, void* data) {
     (void)active;
     BarData* b = data;
-    b->update = 0;
+    int update = 0;
 
     // Animate to target position
     for (size_t i = 0; i < b->sections_size; i++) {
         Section* s = b->sections + i;
         int* a = s->args;
 
-        b->update |= goto_target(a, SECTION_X, SECTION_TARGET_X);
-        b->update |= goto_target(a, SECTION_Y, SECTION_TARGET_Y);
-        b->update |= goto_target(a, SECTION_W, SECTION_TARGET_W);
-        b->update |= goto_target(a, SECTION_H, SECTION_TARGET_H);
-        b->update |= goto_target(a, SECTION_R1, SECTION_TARGET_R1);
-        b->update |= goto_target(a, SECTION_R2, SECTION_TARGET_R2);
-        b->update |= goto_target(a, SECTION_R3, SECTION_TARGET_R3);
-        b->update |= goto_target(a, SECTION_R4, SECTION_TARGET_R4);
+        update |= goto_target(a, SECTION_X, SECTION_TARGET_X);
+        update |= goto_target(a, SECTION_Y, SECTION_TARGET_Y);
+        update |= goto_target(a, SECTION_W, SECTION_TARGET_W);
+        update |= goto_target(a, SECTION_H, SECTION_TARGET_H);
+        update |= goto_target(a, SECTION_R1, SECTION_TARGET_R1);
+        update |= goto_target(a, SECTION_R2, SECTION_TARGET_R2);
+        update |= goto_target(a, SECTION_R3, SECTION_TARGET_R3);
+        update |= goto_target(a, SECTION_R4, SECTION_TARGET_R4);
     }
 
-    if (b->update) return 0;
+    if (update) {
+        b->update = 1;
+        return 0;
+    }
 
     if (b->animation_head) {
         AnimationNode* a = b->animation_head;
@@ -329,6 +335,12 @@ int bar_draw(cairo_t* cairo, void* data) {
         cairo_fill(cairo);
     }
 
+    cairo_move_to(cairo, b->sections[1].args[SECTION_X] + 10, b->sections[1].args[SECTION_Y] + 5);
+    cairo_set_source_rgba(cairo, 1.0,1.0,1.0,1.0);
+    pango_layout_set_text(b->layout, b->song, -1);
+    pango_cairo_update_layout(cairo, b->layout);
+    pango_cairo_show_layout(cairo, b->layout);
+
     return 0;
 }
 
@@ -339,6 +351,68 @@ void bar_destroy(void* data) {
     free(d);
 }
 
+int open_playerctl_fd() {
+    int pipe_fds[2];
+
+    if (pipe(pipe_fds) == -1) {
+        perror("pipe failed");
+        return -1;
+    }
+
+    pid_t pid = fork();
+
+    if (pid == -1) {
+        perror("fork failed");
+        close(pipe_fds[0]);
+        close(pipe_fds[1]);
+        return -1;
+    }
+
+    if (pid == 0) {
+        close(pipe_fds[0]); 
+        if (dup2(pipe_fds[1], STDOUT_FILENO) == -1) {
+            perror("dup2 failed");
+            exit(1);
+        }
+        close(pipe_fds[1]); 
+        execlp("playerctl", "playerctl", "metadata", "--follow", 
+               "--format", "{{ title }}\n{{ artist }}", NULL);
+        perror("execlp failed");
+        exit(1);
+    }
+
+    close(pipe_fds[1]);
+    return pipe_fds[0];
+}
+
+void printsong(int fd, void* args) {
+    BarData* b = args;
+    ssize_t bytes_read = read(fd, b->song, 127);
+    
+    if (bytes_read > 0) {
+        b->song[bytes_read] = '\0';
+        
+        if (b->song[bytes_read - 1] == '\n') {
+            b->song[bytes_read - 1] = '\0';
+        }
+        b->update = 1;
+    } 
+    else if (bytes_read == -1) {
+        perror("read error");
+    }
+}
+
+WidgetFD* bar_fds() {
+    WidgetFD* fds = malloc(sizeof(WidgetFD));
+    fds->size = 1;
+    fds->fd = malloc(sizeof(int));
+    fds->callback = malloc(sizeof &printsong);
+
+    fds->fd[0] = open_playerctl_fd();
+    fds->callback[0] = printsong;
+    return fds;
+}
+
 WidgetOps* bar() {
     WidgetOps* b = malloc(sizeof(WidgetOps));
     *b = (WidgetOps) {
@@ -347,7 +421,8 @@ WidgetOps* bar() {
         .keyboard = NULL,
         .step = bar_step,
         .destroy = bar_destroy,
-        .on_toggle = NULL
+        .on_toggle = NULL,
+        .get_fds = bar_fds
     };
     return b;
 }
