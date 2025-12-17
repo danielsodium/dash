@@ -48,10 +48,15 @@ typedef struct {
     char song[128];
 } PlayerctlData;
 
+typedef struct {
+    char time[32];
+} ClockData;
+
 void module_set_field(Module* m, int field, int value);
 void module_set_dim(Module* m, int x, int y, int w, int h);
 void module_set_radi(Module* m, int r1, int r2, int r3, int r4);
 
 void playerctl_module(Module* m);
+void clock_module(Module* m);
 
 #endif

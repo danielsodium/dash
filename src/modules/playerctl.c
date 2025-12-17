@@ -1,9 +1,8 @@
 #include "module.h"
-#include "bar.h"
 
 #include <unistd.h>
 
-int open_fd() {
+static int open_fd() {
     int pipe_fds[2];
     if (pipe(pipe_fds) == -1) {
         perror("pipe failed");
@@ -32,16 +31,15 @@ int open_fd() {
     return pipe_fds[0];
 }
 
-void init(Module* m) {
+static void init(Module* m) {
     PlayerctlData* d = malloc(sizeof(PlayerctlData));
     m->data = (void*) d;
-
     m->fds_size = 1;
     m->fds = malloc(sizeof(int));
     m->fds[0] = open_fd();
 }
 
-void draw(Module* m, cairo_t* cairo, PangoLayout* layout) {
+static void draw(Module* m, cairo_t* cairo, PangoLayout* layout) {
     PlayerctlData* d = m->data;
     cairo_move_to(cairo, m->fields[MODULE_X] + 10, m->fields[MODULE_Y] + 3);
     cairo_set_source_rgba(cairo, 1.0,1.0,1.0,1.0);
@@ -50,7 +48,7 @@ void draw(Module* m, cairo_t* cairo, PangoLayout* layout) {
     pango_cairo_show_layout(cairo, layout);
 }
 
-int callback(Module* m, int fd) {
+static int callback(Module* m, int fd) {
     PlayerctlData* p = m->data;
     char buffer[1024];
     ssize_t bytes_read = read(fd, buffer, 127);

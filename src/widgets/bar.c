@@ -173,13 +173,15 @@ void bar_init(cairo_t* cairo, void* data) {
     b->y = 1440 - 30;
     b->w = 2560;
     b->h = 50;
-    b->modules_size = 1;
+    b->modules_size = 2;
     b->modules = calloc(b->modules_size, sizeof(Module));
 
     // create module
     int module_width = 200;
     create_module(b, 0, module_width);
-    playerctl_module(b->modules);
+    create_module(b, 1, module_width);
+    clock_module(b->modules);
+    playerctl_module(b->modules+1);
 
     for (size_t i = 0; i < b->modules_size; i++) {
         Module* m = b->modules + i;
@@ -312,12 +314,12 @@ int bar_draw(cairo_t* cairo, void* data) {
     cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
     cairo_paint(cairo);
 
-    cairo_set_source_rgba(cairo, 0.7, 0.7, 0.7, 0.7);
     cairo_move_to(cairo, 0,0);
     for (size_t i = 0; i < b->modules_size; i++) {
         Module* m = b->modules + i;
         int* a = m->fields;
         if (!a[MODULE_ACTIVE]) continue;
+        cairo_set_source_rgba(cairo, 0.7, 0.7, 0.7, 0.7);
         cairo_rectangle_radius(cairo, 
                                a[MODULE_X], 
                                a[MODULE_Y], 
