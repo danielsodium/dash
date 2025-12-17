@@ -11,9 +11,16 @@ typedef enum {
     MODULE_UPDATE = 1 << 2
 } ModuleCallbackReturn;
 
+typedef enum {
+    MODULE_ALIGN_LEFT=0,
+    MODULE_ALIGN_CENTER,
+    MODULE_ALIGN_RIGHT,
+} ModuleAlign;
+
 typedef struct Module {
     int active;
     int activate_queued;
+    int align;
     int id;
     int x, y, w, h;
     int r1, r2, r3, r4;

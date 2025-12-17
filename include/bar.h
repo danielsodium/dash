@@ -27,11 +27,18 @@ typedef struct AnimationNode {
 } AnimationNode;
 
 typedef struct {
+    int x, y, w, h;
+    int r1, r2, r3, r4;
+} BarSpacer;
+
+typedef struct {
     int update;
     int x, y, w, h;
 
     Module* modules;
     size_t modules_size;
+
+    BarSpacer spacers[2];
 
     int* fds;
     int* fd_modules;

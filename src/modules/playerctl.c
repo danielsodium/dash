@@ -35,6 +35,7 @@ static void init(Module* m) {
     PlayerctlData* d = malloc(sizeof(PlayerctlData));
     m->data = (void*) d;
     d->x = 20;
+    m->align = MODULE_ALIGN_RIGHT;
     m->fds_size = 1;
     m->fds = malloc(sizeof(int));
     m->fds[0] = open_fd();
@@ -66,11 +67,10 @@ static int callback(Module* m, int fd, PangoLayout* layout) {
             pango_layout_set_text(layout, buffer, -1);
             pango_layout_get_size(layout, &width_pango, &height_pango);
 
-            m->w = width_pango/1024 + p->x * 2;
+            //m->w = width_pango/1024 + p->x * 2;
             p->y = (60 - height_pango/1024)/2;
-
-            strncpy(p->song, buffer, 63);
             buffer[63] = '\0';
+            strncpy(p->song, buffer, 63);
             if (!m->active) return MODULE_ACTIVATE | MODULE_UPDATE;
             return MODULE_UPDATE;
         }

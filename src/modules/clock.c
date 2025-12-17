@@ -51,8 +51,6 @@ static void init(Module* m) {
     ClockData* d = malloc(sizeof(ClockData));
     m->data = (void*) d;
 
-    m->w = 90;
-
     m->fds_size = 1;
     m->fds = malloc(sizeof(int));
     m->fds[0] = open_fd();

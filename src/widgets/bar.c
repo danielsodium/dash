@@ -28,20 +28,18 @@ void create_animation(BarData* b, int module_num, int flags, int* field, int val
 }
 
 void activate_module(BarData* b, size_t x) {
-
     int left = -1;
     int right = -1;
     Module* m = b->modules;
-    int module_width = m[x].w;
     // Find left and right modules
     for (int i = (int)x - 1; i >= 0; i--) {
-        if (m[i].active) {
+        if (m[i].active && m[i].align == m[x].align) {
             left = i;
             break;
         }
     }
     for (size_t i = x + 1; i < b->modules_size; i++) {
-        if (m[i].active) {
+        if (m[i].active && m[i].align == m[x].align) {
             right = i;
             break;
         }
@@ -52,24 +50,41 @@ void activate_module(BarData* b, size_t x) {
 
     // round corner on adjacent modules
     if (left != -1) create_animation(b, left, 0, &m[left].r2, 10);
-    if (right != -1) create_animation(b, right, 0, &m[left].r1, 10);
+    if (right != -1) create_animation(b, right, 0, &m[right].r1, 10);
 
-    // move all previous modules
-    int first = 1;
-    for (size_t i = 0; i < x; i++) {
-        create_animation(b, i, first, &m[i].x, m[i].x - module_width/2);
-        first = 0;
-    }
-    for (size_t i = x+1; i < b->modules_size; i++) {
-        create_animation(b, i, 0, &m[i].x, m[i].x + module_width/2);
-    }
+    if (m[x].align == MODULE_ALIGN_LEFT) {
+        // move all previous modules
+        for (size_t i = x+1; i < b->modules_size; i++) {
+            if (m[i].align == m[x].align)
+                create_animation(b, i, 0, &m[i].x, m[i].x + m[x].w);
+        }
+        create_animation(b, 0, 0, &b->spacers[0].x, b->spacers[0].x + m[x].w);
+        create_animation(b, 0, 0, &b->spacers[0].w, b->spacers[0].w - m[x].w);
 
-    if (left == -1 && right == -1) {
-        create_animation(b, x, 0, &m[x].x, b->w/2 - module_width/2);
-    } else if (right == -1) {
-        create_animation(b, x, 0, &m[x].x, m[left].x + m[left].w - module_width/2);
-    } else {
-        create_animation(b, x, 0, &m[x].x, m[right].x - module_width/2);
+        // Get x position
+        if (left == -1) 
+            create_animation(b, x, 0, &m[x].x, (b->x - b->w)/2);
+        else if (right == -1)
+            create_animation(b, x, 0, &m[x].x, b->spacers[0].x);
+        else
+            create_animation(b, x, 0, &m[x].x, m[right].x);
+
+    } else if (m[x].align == MODULE_ALIGN_CENTER) {
+    } else if (m[x].align == MODULE_ALIGN_RIGHT) {
+        for (size_t i = 0; i < x; i++) {
+            if (m[i].align == m[x].align)
+                create_animation(b, i, 1, &m[i].x, m[i].x - m[x].w);
+        }
+        printf("%d\n", m[x].w);
+        create_animation(b, 0, 0, &b->spacers[1].w, b->spacers[1].w - m[x].w);
+
+        // Get x position
+        if (right == -1) 
+            create_animation(b, x, 0, &m[x].x, (b->x + b->w)/2 - m[x].w);
+        else if (left == -1)
+            create_animation(b, x, 0, &m[x].x, b->spacers[1].x + b->spacers[1].w - m[x].w);
+        else
+            create_animation(b, x, 0, &m[x].x, m[left].x);
     }
 
     // MAKE THIS TOP ONE INSTANT
@@ -77,12 +92,19 @@ void activate_module(BarData* b, size_t x) {
     create_animation(b, x, 1, &m[x].active, 1);
     create_animation(b, x, 1, &m[x].y, 0);
 
-    first = 1;
-    if (left != -1) create_animation(b, x, first ? !(first = 0) : 0, &m[x].r1, 0);
-    if (right != -1) create_animation(b, x, first ? !(first = 0) : 0, &m[x].r2, 0);
+    int first = 1;
+    if (left != -1 || m[x].align == MODULE_ALIGN_RIGHT) 
+        create_animation(b, x, first ? !(first = 0) : 0, &m[x].r1, 0);
+    if (right != -1 || m[x].align == MODULE_ALIGN_LEFT) 
+        create_animation(b, x, first ? !(first = 0) : 0, &m[x].r2, 0);
 
     if (left != -1) create_animation(b, left, first ? !(first = 0) : 0, &m[left].r2, 0);
+    else if (m[x].align == MODULE_ALIGN_RIGHT) 
+        create_animation(b, x, first ? !(first = 0) : 0, &b->spacers[1].r2, 0);
+
     if (right != -1) create_animation(b, right, first ? !(first = 0) : 0, &m[right].r1, 0);
+    else if (m[x].align == MODULE_ALIGN_LEFT) 
+        create_animation(b, x, first ? !(first = 0) : 0, &b->spacers[0].r1, 0);
 
     create_animation(b, x, 1, &m[x].activate_queued, 1);
 
@@ -93,37 +115,58 @@ void deactivate_module(BarData* b, size_t x) {
     int left = -1;
     int right = -1;
     Module* m = b->modules;
-    int module_width = m[x].w;
     // Find left and right modules
     for (int i = (int)x - 1; i >= 0; i--) {
-        if (m[i].active) {
+        if (m[i].active && m[i].align == m[x].align) {
             left = i;
             break;
         }
     }
     for (size_t i = x + 1; i < b->modules_size; i++) {
-        if (m[i].active) {
+        if (m[i].active && m[i].align == m[x].align) {
             right = i;
             break;
         }
     }
 
     // round corners on adjacent modules
-    if (left != -1) create_animation(b, left, 0, &m[left].r2, 10);
-    if (right != -1) create_animation(b, right, 0, &m[right].r1, 10);
+    if (left != -1)
+        create_animation(b, left, 0, &m[left].r2, 10);
+    else if (m[x].align == MODULE_ALIGN_RIGHT)
+        create_animation(b, left, 0, &b->spacers[1].r2, 10);
+
+    if (right != -1)
+        create_animation(b, right, 0, &m[right].r1, 10);
+    else if (m[x].align == MODULE_ALIGN_LEFT)
+        create_animation(b, right, 0, &b->spacers[0].r1, 10);
+
+    int first = 1;
     if (left != -1) create_animation(b, x, 0, &m[x].r1, 10);
+    else if (m[x].align == MODULE_ALIGN_RIGHT) 
+        create_animation(b, x, first ? !(first = 0) : 0, &b->spacers[1].r2, 10);
+
     if (right != -1) create_animation(b, x, 0, &m[x].r2, 10);
+    else if (m[x].align == MODULE_ALIGN_LEFT) 
+        create_animation(b, x, first ? !(first = 0) : 0, &b->spacers[1].r1, 10);
 
     create_animation(b, x, 1, &m[x].y, b->h);
 
-    // move all previous modules
-    int first = 1;
-    for (size_t i = 0; i < x; i++) {
-        create_animation(b, i, first, &m[i].x, m[i].x + module_width/2);
-        first = 0;
-    }
-    for (size_t i = x+1; i < b->modules_size; i++) {
-        create_animation(b, i, 0, &m[i].x, m[i].x - module_width/2);
+    first = 1;
+    if (m[x].align == MODULE_ALIGN_LEFT) {
+        // move all previous modules
+        for (size_t i = x+1; i < b->modules_size; i++) {
+            if (m[i].align == m[x].align)
+                create_animation(b, i, first ? !(first = 0) : 0, &m[i].x, m[i].x - m[x].w);
+        }
+        create_animation(b, 0, first ? !(first = 0) : 0, &b->spacers[0].x, b->spacers[0].x - m[x].w);
+        create_animation(b, 0, 0, &b->spacers[0].w, b->spacers[0].w + m[x].w);
+    } else if (m[x].align == MODULE_ALIGN_CENTER) {
+    } else if (m[x].align == MODULE_ALIGN_RIGHT) {
+        for (size_t i = 0; i < x; i++) {
+            if (m[i].align == m[x].align)
+                create_animation(b, i, first ? !(first = 0) : 0, &m[i].x, m[i].x + m[x].w);
+        }
+        create_animation(b, 0, first ? !(first = 0) : 0, &b->spacers[1].w, b->spacers[0].w + m[x].w);
     }
 
     create_animation(b, x, 1, &m[x].active, 0);
@@ -131,6 +174,12 @@ void deactivate_module(BarData* b, size_t x) {
     if (left != -1 && right != -1) {
         create_animation(b, left, 0, &m[left].r2, 0);
         create_animation(b, right, 0, &m[right].r1, 0);
+    } else if (left != -1 && m[x].align == MODULE_ALIGN_RIGHT) {
+        create_animation(b, right, 0, &m[right].r1, 0);
+        create_animation(b, right, 0, &b->spacers[1].r2, 0);
+    } else if (right != -1 && m[x].align == MODULE_ALIGN_LEFT) {
+        create_animation(b, right, 0, &m[left].r2, 0);
+        create_animation(b, right, 0, &b->spacers[0].r1, 0);
     }
 }
 
@@ -158,6 +207,7 @@ void create_module(BarData* b, int index, int width) {
     m->id = index;
     module_set_dim(m, 0, 0, width, b->h);
     module_set_radi(m, 0, 0, 0, 0);
+    
 }
 
 void bar_init(cairo_t* cairo, void* data) {
@@ -171,17 +221,33 @@ void bar_init(cairo_t* cairo, void* data) {
     b->action_head = NULL;
     b->action_tail = NULL;
 
-    b->x = 0;
+    b->x = 2560;
     b->y = 1440 - 60;
     b->w = 1000;
     b->h = 60;
     b->modules_size = 2;
     b->modules = calloc(b->modules_size, sizeof(Module));
 
+    b->spacers[0] = (BarSpacer) {
+        .x = (b->x - b->w)/2,
+        .y = 0,
+        .w = b->w/2,
+        .h = b->y,
+        .r1 = 10,
+    };
+    b->spacers[1] = (BarSpacer) {
+        .x = b->x/2,
+        .y = 0,
+        .w = b->w/2,
+        .h = b->y,
+        .r2 = 10
+    };
+
     // create module
     int module_width = 200;
     create_module(b, 0, module_width);
     create_module(b, 1, module_width);
+    //create_module(b, 2, module_width);
     clock_module(b->modules);
     playerctl_module(b->modules+1);
 
@@ -282,16 +348,21 @@ int bar_draw(cairo_t* cairo, void* data) {
     cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
     cairo_paint(cairo);
 
+    for (size_t i = 0; i < 2; i++) {
+        BarSpacer* m = b->spacers + i;
+        cairo_move_to(cairo, 0,0);
+        cairo_set_source_rgba(cairo, 0.2, 0.2, 0.2, 0.8);
+        cairo_rectangle_radius(cairo, 
+                               m->x, m->y, m->w, m->h,
+                               m->r1, m->r2, m->r3, m->r4);
+        cairo_fill(cairo);
+    }
+
     for (size_t i = 0; i < b->modules_size; i++) {
         Module* m = b->modules + i;
         if (!m->active) continue;
         cairo_move_to(cairo, 0,0);
         cairo_set_source_rgba(cairo, 0.2, 0.2, 0.2, 0.8);
-        /*
-        printf("x%d y%d w%d h%d r%d r%d r%d r%d\n", 
-                               m->x, m->y, m->w, m->h,
-                               m->r1, m->r2, m->r3, m->r4);
-        */
         cairo_rectangle_radius(cairo, 
                                m->x, m->y, m->w, m->h,
                                m->r1, m->r2, m->r3, m->r4);
