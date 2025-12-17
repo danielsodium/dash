@@ -30,7 +30,10 @@ static int callback(Module* m, int fd, PangoLayout* layout) {
     ClockData* c = m->data;
     time_t now = time(NULL);
     struct tm *t = localtime(&now);
-    sprintf(c->time, "%02d:%02d", t->tm_hour%12 == 0 ? 12 : t->tm_hour%12, t->tm_min);
+    sprintf(c->time, "%d:%02d %s", 
+            t->tm_hour%12 == 0 ? 12 : t->tm_hour%12, 
+            t->tm_min, 
+            t->tm_hour < 12 ? "AM" : "PM");
 
     if (c->y == -1) {
         int width_pango, height_pango;

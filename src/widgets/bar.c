@@ -173,7 +173,7 @@ void bar_init(cairo_t* cairo, void* data) {
 
     b->x = 0;
     b->y = 1440 - 60;
-    b->w = 2560;
+    b->w = 1000;
     b->h = 60;
     b->modules_size = 2;
     b->modules = calloc(b->modules_size, sizeof(Module));
