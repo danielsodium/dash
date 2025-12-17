@@ -10,7 +10,7 @@ void wp_init(cairo_t* cairo, void* data) {
     cairo_paint(cairo);
 
     cairo_surface_t *image =
-        cairo_image_surface_create_from_png("/home/dan/Downloads/bw.png");
+        cairo_image_surface_create_from_png("/home/dan/Downloads/mountains.png");
 
     cairo_set_source_surface(cairo, image, 0, 0);
     cairo_paint(cairo);

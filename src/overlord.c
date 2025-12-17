@@ -101,7 +101,7 @@ int overlord_run(int sock) {
     o->keyboard = keyboard_attach(wayland_seat(), on_keyboard_callback);
 
     // Setup widgets
-    o->widgets_size = 1;
+    o->widgets_size = 2;
     o->widgets = calloc(o->widgets_size, sizeof(Widget));
 
     int anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP |
@@ -119,14 +119,12 @@ int overlord_run(int sock) {
     WidgetOps* bar_ops = bar();
     bar_ops->toggle = NULL;
     anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM;
-    o->widgets[0] = widget_create(2560, 50, (void*)bdata, wayland_shm(), bar_ops, wayland_create_surface(2560, 50, anchor, ZWLR_LAYER_SHELL_V1_LAYER_TOP));
+    o->widgets[0] = widget_create(2560, 60, (void*)bdata, wayland_shm(), bar_ops, wayland_create_surface(2560, 60, anchor, ZWLR_LAYER_SHELL_V1_LAYER_TOP));
 
-    /*
     WidgetOps* wp_ops = wp();
     bar_ops->toggle = NULL;
     anchor = 0;
-    o->widgets[2] = widget_create(2560, 1440, NULL, wayland_shm(), wp_ops, wayland_create_surface(2560, 1440, anchor, ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND));
-    */
+    o->widgets[1] = widget_create(2560, 1440, NULL, wayland_shm(), wp_ops, wayland_create_surface(2560, 1440, anchor, ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND));
 
 
     // Create event loop

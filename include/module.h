@@ -39,16 +39,18 @@ typedef struct Module {
     size_t fds_size;
     void* data;
 
-    void(*init)(struct Module* m);
-    void(*draw)(struct Module* m, cairo_t*, PangoLayout* layout);
-    int (*callback)(struct Module* m, int);
+    void(*init)(struct Module*);
+    void(*draw)(struct Module*, cairo_t*, PangoLayout*);
+    int (*callback)(struct Module*, int, PangoLayout*);
 } Module;
 
 typedef struct {
+    int x, y;
     char song[128];
 } PlayerctlData;
 
 typedef struct {
+    int x, y;
     char time[32];
 } ClockData;
 

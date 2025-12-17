@@ -34,6 +34,7 @@ static int open_fd() {
 static void init(Module* m) {
     PlayerctlData* d = malloc(sizeof(PlayerctlData));
     m->data = (void*) d;
+    d->x = 20;
     m->fds_size = 1;
     m->fds = malloc(sizeof(int));
     m->fds[0] = open_fd();
@@ -41,14 +42,14 @@ static void init(Module* m) {
 
 static void draw(Module* m, cairo_t* cairo, PangoLayout* layout) {
     PlayerctlData* d = m->data;
-    cairo_move_to(cairo, m->fields[MODULE_X] + 10, m->fields[MODULE_Y] + 3);
+    cairo_move_to(cairo, m->fields[MODULE_X] + d->x, m->fields[MODULE_Y] + d->y);
     cairo_set_source_rgba(cairo, 1.0,1.0,1.0,1.0);
     pango_layout_set_text(layout, d->song, -1);
     pango_cairo_update_layout(cairo, layout);
     pango_cairo_show_layout(cairo, layout);
 }
 
-static int callback(Module* m, int fd) {
+static int callback(Module* m, int fd, PangoLayout* layout) {
     PlayerctlData* p = m->data;
     char buffer[1024];
     ssize_t bytes_read = read(fd, buffer, 127);
@@ -60,9 +61,17 @@ static int callback(Module* m, int fd) {
             buffer[bytes_read - 1] = '\0';
         }
 
+
         if (buffer[0] == '\0') {
             if (m->fields[MODULE_ACTIVE]) return MODULE_DEACTIVATE | MODULE_UPDATE;
         } else {
+            int width_pango, height_pango;
+            pango_layout_set_text(layout, buffer, -1);
+            pango_layout_get_size(layout, &width_pango, &height_pango);
+
+            m->fields[MODULE_TARGET_W] = width_pango/1024 + p->x * 2;
+            p->y = (60 - height_pango/1024)/2;
+
             strcpy(p->song, buffer);
             if (!m->fields[MODULE_ACTIVE]) return MODULE_ACTIVATE | MODULE_UPDATE;
             return MODULE_UPDATE;

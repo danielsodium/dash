@@ -13,7 +13,7 @@ static int open_fd() {
 
     struct itimerspec spec = {0};
     spec.it_value.tv_sec = 1;
-    spec.it_value.tv_nsec = 100;
+    spec.it_value.tv_nsec = 0;
     spec.it_interval = spec.it_value;
     
     if (timerfd_settime(fd, 0, &spec, NULL) == -1) {
@@ -21,6 +21,27 @@ static int open_fd() {
         return -1;
     }
     return fd;
+}
+
+static int callback(Module* m, int fd, PangoLayout* layout) {
+    (void)layout;
+    uint64_t exp;
+    read(fd, &exp, sizeof(exp));
+    ClockData* c = m->data;
+    time_t now = time(NULL);
+    struct tm *t = localtime(&now);
+    sprintf(c->time, "%02d:%02d", t->tm_hour%12, t->tm_min);
+
+    if (c->y == -1) {
+        int width_pango, height_pango;
+        pango_layout_set_text(layout, c->time, -1);
+        pango_layout_get_size(layout, &width_pango, &height_pango);
+        m->fields[MODULE_TARGET_W] = width_pango/1024 + c->x * 2;
+        c->y = (60 - height_pango/1024)/2;
+    }
+
+    if (!m->fields[MODULE_ACTIVE]) return MODULE_ACTIVATE | MODULE_UPDATE;
+    return MODULE_UPDATE;
 }
 
 static void init(Module* m) {
@@ -33,27 +54,19 @@ static void init(Module* m) {
     m->fds_size = 1;
     m->fds = malloc(sizeof(int));
     m->fds[0] = open_fd();
+
+    d->x = 30;
+    d->y = -1;
+
 }
 
 static void draw(Module* m, cairo_t* cairo, PangoLayout* layout) {
     ClockData* d = m->data;
-    cairo_move_to(cairo, m->fields[MODULE_X] + 20, m->fields[MODULE_Y] + 15);
+    cairo_move_to(cairo, m->fields[MODULE_X] + d->x, m->fields[MODULE_Y] + d->y);
     cairo_set_source_rgba(cairo, 1.0,1.0,1.0,1.0);
     pango_layout_set_text(layout, d->time, -1);
     pango_cairo_update_layout(cairo, layout);
     pango_cairo_show_layout(cairo, layout);
-}
-
-static int callback(Module* m, int fd) {
-    uint64_t exp;
-    read(fd, &exp, sizeof(exp));
-    ClockData* c = m->data;
-    time_t now = time(NULL);
-    struct tm *t = localtime(&now);
-    sprintf(c->time, "%02d:%02d", t->tm_hour, t->tm_min);
-
-    if (!m->fields[MODULE_ACTIVE]) return MODULE_ACTIVATE | MODULE_UPDATE;
-    return MODULE_UPDATE;
 }
 
 void clock_module(Module* m) {

@@ -153,7 +153,7 @@ void create_module(BarData* b, int index, int width) {
     Module* m = b->modules + index;
     module_set_field(m, MODULE_ACTIVE, 0);
     module_set_field(m, MODULE_ID, index);
-    module_set_dim(m, 0, 0, width, 50);
+    module_set_dim(m, 0, 0, width, b->h);
     module_set_radi(m, 0, 0, 0, 0);
 
 }
@@ -161,7 +161,7 @@ void create_module(BarData* b, int index, int width) {
 void bar_init(cairo_t* cairo, void* data) {
     BarData* b = data;
     b->layout = pango_cairo_create_layout(cairo);
-    b->font = pango_font_description_from_string("JetBrainsMono Nerd Font 12");
+    b->font = pango_font_description_from_string("Inter 13");
     pango_layout_set_font_description(b->layout, b->font);
 
     b->animation_head = NULL;
@@ -170,9 +170,9 @@ void bar_init(cairo_t* cairo, void* data) {
     b->action_tail = NULL;
 
     b->x = 0;
-    b->y = 1440 - 30;
+    b->y = 1440 - 60;
     b->w = 2560;
-    b->h = 50;
+    b->h = 60;
     b->modules_size = 2;
     b->modules = calloc(b->modules_size, sizeof(Module));
 
@@ -189,6 +189,7 @@ void bar_init(cairo_t* cairo, void* data) {
     }
 
     // fill FDs
+    b->fds_size = 0;
     for (size_t i = 0; i < b->modules_size; i++) {
         b->fds_size += b->modules[i].fds_size;
     }
@@ -319,7 +320,7 @@ int bar_draw(cairo_t* cairo, void* data) {
         Module* m = b->modules + i;
         int* a = m->fields;
         if (!a[MODULE_ACTIVE]) continue;
-        cairo_set_source_rgba(cairo, 0.7, 0.7, 0.7, 0.7);
+        cairo_set_source_rgba(cairo, 0.2, 0.2, 0.2, 0.8);
         cairo_rectangle_radius(cairo, 
                                a[MODULE_X], 
                                a[MODULE_Y], 
@@ -348,7 +349,7 @@ void bar_callback(int fd, void* data) {
     for (size_t i = 0; i < b->fds_size; i++) {
         if (b->fds[i] == fd) {
             Module* m = b->modules + b->fd_modules[i];
-            int r = m->callback(m, fd);
+            int r = m->callback(m, fd, b->layout);
             if (r & MODULE_UPDATE) {
                 b->update = 1;
             }
