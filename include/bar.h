@@ -13,11 +13,16 @@ typedef enum Actions {
     ACTION_DEACTIVATE
 } Actions;
 
+typedef enum AnimationFlags {
+    ANIMATION_WAIT = 1,
+    ANIMATION_INSTANT = 2
+} AnimationFlags;
+
 typedef struct AnimationNode {
     int module;
-    int field;
+    int* field;
     int value;
-    int wait;
+    int flags;
     struct AnimationNode* next;
 } AnimationNode;
 
