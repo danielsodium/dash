@@ -18,7 +18,7 @@ struct WidgetOps {
     void (*destroy)(void*);
     void(*toggle)(void);
     void(*on_toggle)(int, void*);
-    WidgetFD*(*get_fds)(void);
+    WidgetFD*(*get_fds)(void*);
 };
 
 struct Widget {

@@ -53,7 +53,7 @@ void widget_on_toggle(Widget* w) {
 
 WidgetFD* widget_get_fd(Widget* w) {
     if (w->operators->get_fds == NULL) return NULL;
-    else return w->operators->get_fds();
+    else return w->operators->get_fds(w->data);
 }
 
 Widget* widget_create(size_t width, size_t height, void* data, struct wl_shm* shm, WidgetOps* operators, struct wl_surface* surface) {
